@@ -1,0 +1,606 @@
+/* Estilos para la Gestión de Clientes */
+
+.gestion-clientes-container {
+  margin-left: 280px; /* Espacio para el sidebar */
+  padding: 2rem;
+  min-height: 100vh;
+  background: var(--color-fondo);
+}
+
+/* Header de la página */
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  color: var(--color-primario);
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  color: var(--color-texto);
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+
+/* Grid de estadísticas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--color-blanco);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px var(--color-sombra);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-left: 4px solid;
+}
+
+.stat-card.total {
+  border-left-color: #007bff;
+}
+
+.stat-card.email {
+  border-left-color: #28a745;
+}
+
+.stat-card.direccion {
+  border-left-color: #ffc107;
+}
+
+.stat-card.nuevos {
+  border-left-color: #17a2b8;
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-content h3 {
+  color: var(--color-texto);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  color: var(--color-primario);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Barra de acciones */
+.actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--color-blanco);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--color-sombra);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Botón secundario para registro rápido */
+.btn-secondary {
+  background: var(--color-secundario);
+  color: var(--color-blanco);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.btn-secondary:hover {
+  background: #c4954a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(217, 162, 97, 0.3);
+}
+
+/* Contenedor de búsqueda */
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 1rem;
+  min-width: 250px;
+  transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 3px rgba(217, 162, 97, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  right: 1rem;
+  color: var(--color-texto);
+  opacity: 0.6;
+  font-size: 1.1rem;
+}
+
+/* Contenedor de la tabla */
+.table-container {
+  background: var(--color-blanco);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--color-sombra);
+  overflow: hidden;
+}
+
+/* Tabla de clientes */
+.clientes-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.clientes-table thead {
+  background: var(--color-primario);
+  color: var(--color-blanco);
+}
+
+.clientes-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clientes-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+}
+
+.clientes-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+/* Celdas específicas */
+.id-cell {
+  font-weight: 600;
+  color: var(--color-primario);
+  width: 60px;
+}
+
+.nombre-cell {
+  font-weight: 600;
+  color: var(--color-texto);
+  min-width: 150px;
+}
+
+.telefono-cell {
+  color: var(--color-texto);
+  min-width: 120px;
+  font-family: monospace;
+}
+
+.email-cell {
+  min-width: 200px;
+}
+
+.email-link {
+  color: var(--color-secundario);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.email-link:hover {
+  text-decoration: underline;
+}
+
+.no-data {
+  color: #6c757d;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.direccion-cell {
+  color: var(--color-texto);
+  min-width: 200px;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fecha-cell {
+  color: var(--color-texto);
+  min-width: 120px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.acciones-cell {
+  text-align: center;
+  width: 120px;
+}
+
+.btn-accion {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin: 0 0.25rem;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-accion.editar:hover {
+  background: #e3f2fd;
+  transform: scale(1.1);
+}
+
+.btn-accion.eliminar:hover {
+  background: #ffebee;
+  transform: scale(1.1);
+}
+
+/* Sin resultados */
+.no-results {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-texto);
+  opacity: 0.6;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Modal del formulario */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--color-blanco);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+  color: var(--color-primario);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+/* Formulario de cliente */
+.cliente-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--color-texto);
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 0.75rem;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 3px rgba(217, 162, 97, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+/* Modal de registro rápido */
+.registro-cliente-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .gestion-clientes-container {
+    margin-left: 0;
+    padding: 1rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .actions-bar {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+  
+  .search-input {
+    min-width: 100%;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .clientes-table {
+    min-width: 800px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .clientes-table th,
+  .clientes-table td {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .direccion-cell {
+    display: none;
+  }
+  
+  .form-buttons {
+    flex-direction: column;
+  }
+}
+
+/* Estilos para historial de compras */
+.historial-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--color-primario);
+  font-size: 1.5rem;
+}
+
+.btn-cerrar {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.25rem;
+}
+
+.btn-cerrar:hover {
+  color: #333;
+}
+
+.historial-content {
+  padding: 0;
+}
+
+/* Estadísticas del cliente */
+.cliente-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.stat-value {
+  font-weight: 700;
+  color: var(--color-primario);
+  font-size: 1.1rem;
+}
+
+/* Lista de compras */
+.compras-lista h4 {
+  margin: 0 0 1rem 0;
+  color: var(--color-primario);
+  font-size: 1.2rem;
+}
+
+.compras-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.compra-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.compra-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.compra-fecha {
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.compra-total {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.compra-productos {
+  margin-bottom: 0.75rem;
+}
+
+.producto-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.producto-item:last-child {
+  border-bottom: none;
+}
+
+.producto-nombre {
+  font-weight: 500;
+  color: var(--color-texto);
+}
+
+.producto-cantidad {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.producto-precio {
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.compra-metodo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.metodo-label {
+  color: #666;
+}
+
+.metodo-valor {
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.no-compras {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+/* Botón de historial */
+.btn-accion.historial {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-accion.historial:hover {
+  background: #138496;
+}

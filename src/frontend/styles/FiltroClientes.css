@@ -1,0 +1,129 @@
+/* Estilos para el componente FiltroClientes */
+.filtro-clientes {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.filtro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.filtro-header h3 {
+  color: #8C6A4F;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.btn-limpiar {
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-limpiar:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.filtro-controls {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filtro-group label {
+  font-weight: 600;
+  color: #8C6A4F;
+  font-size: 14px;
+}
+
+.filtro-select,
+.filtro-input {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.filtro-select:focus,
+.filtro-input:focus {
+  outline: none;
+  border-color: #8C6A4F;
+  box-shadow: 0 0 0 3px rgba(140, 106, 79, 0.1);
+}
+
+.filtro-input::placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+.filtro-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #8C6A4F;
+}
+
+.filtro-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.filtro-info strong {
+  color: #8C6A4F;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filtro-controls {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .filtro-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .btn-limpiar {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .filtro-clientes {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .filtro-header h3 {
+    font-size: 16px;
+  }
+}
