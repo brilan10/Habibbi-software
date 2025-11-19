@@ -334,69 +334,156 @@ try {
         // =====================================================
         // RUTAS DE PROVEEDORES (DEBE ir ANTES de productos para evitar conflictos)
         // =====================================================
-        // Endpoints: GET /api/proveedores, GET /api/proveedores/{id}, POST /api/proveedores, PUT /api/proveedores/{id}, DELETE /api/proveedores/{id}
-        // Propósito: Gestión completa de proveedores (CRUD)
+        /**
+         * IMPORTANTE: Esta ruta DEBE estar ANTES de la ruta de productos
+         * porque '/api/proveedores' podría coincidir con '/api/productos' si se evalúa después
+         * debido a cómo funciona strpos() en PHP
+         * 
+         * Endpoints disponibles:
+         * - GET /api/proveedores - Listar todos los proveedores activos
+         * - GET /api/proveedores/{id} - Obtener un proveedor específico por ID
+         * - POST /api/proveedores - Crear un nuevo proveedor
+         * - PUT /api/proveedores/{id} - Actualizar un proveedor existente
+         * - DELETE /api/proveedores/{id} - Eliminar un proveedor (soft delete)
+         * 
+         * Propósito: Gestión completa de proveedores (CRUD)
+         * Los proveedores son las empresas que suministran insumos al negocio
+         */
         case strpos($path, '/api/proveedores') !== false:
-            // Log para debugging
+            // Log para debugging: indicar que se detectó la ruta de proveedores
+            // Estos logs ayudan a diagnosticar problemas de enrutamiento
             error_log("🏢 RUTA PROVEEDORES DETECTADA - Path: " . $path);
             error_log("🏢 Método HTTP: " . $_SERVER['REQUEST_METHOD']);
             
-            // Definir constante para indicar que el enrutamiento se hace desde index.php
+            /**
+             * Definir constante para indicar que el enrutamiento se hace desde index.php
+             * Esta constante se usa en ProveedoresController.php para evitar que se ejecute
+             * el enrutador independiente del controlador (que está al final del archivo)
+             * Si PROVEEDORES_ROUTED_BY_INDEX está definida, el controlador sabe que ya
+             * se manejó el enrutamiento aquí y no intenta hacerlo de nuevo
+             */
             define('PROVEEDORES_ROUTED_BY_INDEX', true);
             
-            // Cargar y crear instancia del controlador de proveedores
+            /**
+             * Cargar y crear instancia del controlador de proveedores
+             * require_once asegura que el archivo solo se cargue una vez (evita errores si se incluye múltiples veces)
+             * ProveedoresController es la clase que maneja toda la lógica de CRUD de proveedores
+             */
             require_once 'controllers/ProveedoresController.php';
             $proveedoresController = new ProveedoresController();
             
-            // Obtener el método HTTP de la petición
+            /**
+             * Obtener el método HTTP de la petición
+             * $_SERVER['REQUEST_METHOD'] contiene el método HTTP usado (GET, POST, PUT, DELETE, etc.)
+             * Este valor determina qué acción se debe realizar
+             */
             $method = $_SERVER['REQUEST_METHOD'];
             
-            // Extraer el ID del proveedor de la URL si existe
+            /**
+             * Extraer el ID del proveedor de la URL si existe
+             * 
+             * preg_match() busca un patrón en la URL usando expresión regular
+             * Patrón: '/\/api\/proveedores\/(\d+)/'
+             *   - \/api\/proveedores\/ busca literalmente "/api/proveedores/"
+             *   - (\d+) captura uno o más dígitos (el ID)
+             *   - Los paréntesis crean un grupo de captura
+             * 
+             * $matches es un array que contiene los resultados de la búsqueda
+             * $matches[0] contiene la coincidencia completa
+             * $matches[1] contiene el primer grupo capturado (el ID)
+             * 
+             * isset($matches[1]) verifica si se encontró un ID
+             * intval() convierte el string del ID a entero (seguridad: solo números)
+             * Si no hay ID, $id será null
+             */
             preg_match('/\/api\/proveedores\/(\d+)/', $path, $matches);
             $id = isset($matches[1]) ? intval($matches[1]) : null;
             
+            // Log del ID extraído para debugging
             error_log("🏢 ID extraído: " . ($id ?? 'null'));
             
-            // Enrutar según el método HTTP
+            /**
+             * Enrutar según el método HTTP
+             * switch() evalúa el método HTTP y ejecuta el código correspondiente
+             * Cada caso maneja un método HTTP diferente (GET, POST, PUT, DELETE)
+             */
             switch ($method) {
                 case 'GET':
+                    /**
+                     * Método GET: Obtener datos
+                     * 
+                     * Si hay un ID en la URL:
+                     *   - GET /api/proveedores/{id} - Obtener un proveedor específico
+                     * Si no hay ID:
+                     *   - GET /api/proveedores - Listar todos los proveedores activos
+                     */
                     if ($id) {
-                        // GET /api/proveedores/{id} - Obtener un proveedor específico
+                        // Obtener un proveedor específico por su ID
                         error_log("🏢 Llamando a obtener($id)");
                         $proveedoresController->obtener($id);
                     } else {
-                        // GET /api/proveedores - Listar todos los proveedores
+                        // Listar todos los proveedores activos
                         error_log("🏢 Llamando a listar()");
                         $proveedoresController->listar();
                     }
                     break;
+                    
                 case 'POST':
-                    // POST /api/proveedores - Crear nuevo proveedor
+                    /**
+                     * Método POST: Crear nuevo recurso
+                     * 
+                     * POST /api/proveedores - Crear nuevo proveedor
+                     * Los datos del proveedor vienen en el body de la petición (JSON)
+                     * No requiere ID porque es un nuevo recurso
+                     */
                     error_log("🏢 Llamando a crear()");
                     $proveedoresController->crear();
                     break;
+                    
                 case 'PUT':
-                    // PUT /api/proveedores/{id} - Actualizar proveedor existente
+                    /**
+                     * Método PUT: Actualizar recurso existente
+                     * 
+                     * PUT /api/proveedores/{id} - Actualizar proveedor existente
+                     * Requiere un ID en la URL para saber qué proveedor actualizar
+                     * Los nuevos datos vienen en el body de la petición (JSON)
+                     */
                     if ($id) {
+                        // Actualizar el proveedor con el ID especificado
                         error_log("🏢 Llamando a actualizar($id)");
                         $proveedoresController->actualizar($id);
                     } else {
+                        // Si no hay ID, enviar error 400 (Bad Request)
                         error_log("🏢 Error: ID requerido para PUT");
                         $proveedoresController->sendResponse(400, ['error' => 'ID requerido']);
                     }
                     break;
+                    
                 case 'DELETE':
-                    // DELETE /api/proveedores/{id} - Eliminar proveedor (soft delete)
+                    /**
+                     * Método DELETE: Eliminar recurso
+                     * 
+                     * DELETE /api/proveedores/{id} - Eliminar proveedor (soft delete)
+                     * Requiere un ID en la URL para saber qué proveedor eliminar
+                     * Soft delete significa que no se elimina físicamente, solo se marca como inactivo
+                     */
                     if ($id) {
+                        // Eliminar (soft delete) el proveedor con el ID especificado
                         error_log("🏢 Llamando a eliminar($id)");
                         $proveedoresController->eliminar($id);
                     } else {
+                        // Si no hay ID, enviar error 400 (Bad Request)
                         error_log("🏢 Error: ID requerido para DELETE");
                         $proveedoresController->sendResponse(400, ['error' => 'ID requerido']);
                     }
                     break;
+                    
                 default:
-                    // Método HTTP no permitido
+                    /**
+                     * Método HTTP no permitido
+                     * Si el método HTTP no es GET, POST, PUT o DELETE, enviar error 405 (Method Not Allowed)
+                     * Esto puede ocurrir si se intenta usar PATCH, OPTIONS, etc.
+                     */
                     error_log("🏢 Error: Método no permitido: " . $method);
                     $proveedoresController->sendResponse(405, ['error' => 'Método no permitido']);
                     break;

@@ -20,7 +20,16 @@ const GestionInsumos = () => {
   // Estado para los insumos inactivos
   const [insumosInactivos, setInsumosInactivos] = useState([]);
   
-  // Estado para la lista de proveedores
+  /**
+   * Estado: listaProveedores
+   * 
+   * Almacena la lista de proveedores cargados desde el backend
+   * Se usa para poblar el dropdown de selección de proveedor en el formulario
+   * 
+   * useState([]) inicializa con un array vacío
+   * listaProveedores: Array con los objetos de proveedores
+   * setListaProveedores: Función para actualizar el array
+   */
   const [listaProveedores, setListaProveedores] = useState([]);
   
   // Estado para el formulario de nuevo insumo
@@ -35,36 +44,89 @@ const GestionInsumos = () => {
   const [capacidadVaso, setCapacidadVaso] = useState(0);
   const [cantidadVasos, setCantidadVasos] = useState('');
 
-  // Función para cargar proveedores desde el backend
+  /**
+   * Función: cargarProveedores
+   * 
+   * Carga la lista de proveedores desde el backend
+   * Se ejecuta al montar el componente y cuando se necesita refrescar la lista
+   * 
+   * Los proveedores se usan para:
+   * - Poblar el dropdown de selección en el formulario de insumos
+   * - Mostrar el proveedor asociado a cada insumo en la tabla
+   */
   const cargarProveedores = async () => {
     try {
+      /**
+       * Crear timestamp único para evitar caché del navegador
+       * new Date().getTime() obtiene el tiempo actual en milisegundos
+       * Se agrega como parámetro ?_t=timestamp a la URL
+       */
       const timestamp = new Date().getTime();
+      
+      /**
+       * Hacer petición GET al endpoint de proveedores
+       * API_CONFIG.BASE_URL contiene la URL base del backend
+       * '/api/proveedores' es el endpoint para obtener todos los proveedores activos
+       * `?_t=${timestamp}` fuerza una petición fresca (evita caché)
+       */
       const response = await axios.get(
         API_CONFIG.BASE_URL + '/api/proveedores' + `?_t=${timestamp}`
       );
       
+      /**
+       * Verificar si la respuesta fue exitosa
+       * response.data.success indica si la operación fue exitosa
+       */
       if (response.data && response.data.success) {
+        /**
+         * Actualizar el estado con los proveedores obtenidos
+         * response.data.data contiene el array de proveedores
+         * || [] es un fallback: si data es null/undefined, usa array vacío
+         */
         setListaProveedores(response.data.data || []);
         console.log('✅ Proveedores cargados:', response.data.data.length);
       } else {
+        /**
+         * Si la respuesta no fue exitosa, establecer lista vacía
+         * Esto evita errores en el componente si no hay proveedores
+         */
         console.error('❌ Respuesta del servidor sin éxito:', response.data);
         setListaProveedores([]);
       }
     } catch (error) {
+      /**
+       * Si ocurre un error en la petición HTTP, establecer lista vacía
+       * Esto permite que el componente continúe funcionando aunque no haya proveedores
+       */
       console.error('❌ Error al cargar proveedores:', error);
       setListaProveedores([]);
     }
   };
 
-  // Cargar insumos y proveedores al montar el componente - FORZAR RECARGA LIMPIA
+  /**
+   * Hook useEffect: Cargar datos al montar el componente
+   * 
+   * Se ejecuta una sola vez cuando el componente se monta (array de dependencias vacío [])
+   * 
+   * Acciones realizadas:
+   * 1. Limpiar el estado de insumos antes de cargar (evita datos obsoletos)
+   * 2. Cargar insumos desde el backend
+   * 3. Cargar proveedores desde el backend
+   * 
+   * IMPORTANTE: Se cargan ambos (insumos y proveedores) porque:
+   * - Los insumos muestran el proveedor asociado
+   * - El formulario necesita la lista de proveedores para el dropdown
+   */
   useEffect(() => {
     console.log('🚀 Componente GestionInsumos montado - Cargando datos desde BD');
-    // Limpiar estado antes de cargar
+    // Limpiar estado antes de cargar (evita mostrar datos obsoletos)
     setListaInsumos([]);
     setInsumosInactivos([]);
+    // Cargar insumos desde el backend
     cargarInsumos();
+    // Cargar proveedores desde el backend
     cargarProveedores();
-  }, []);
+  }, []); // Array vacío [] significa que solo se ejecuta una vez al montar
 
   // Estado de carga
   const [cargando, setCargando] = useState(true);
@@ -301,15 +363,34 @@ const GestionInsumos = () => {
    * Función para abrir el formulario de edición
    * Carga los datos del insumo seleccionado
    */
+  /**
+   * Función: abrirFormularioEdicion
+   * 
+   * Prepara el formulario para editar un insumo existente
+   * Se ejecuta cuando el usuario hace clic en el botón de editar (✏️)
+   * 
+   * @param {Object} insumo - Objeto con los datos del insumo a editar
+   */
   const abrirFormularioEdicion = (insumo) => {
+    /**
+     * Cargar los datos del insumo en el formulario
+     * 
+     * Se convierten los valores numéricos a string porque los inputs HTML
+     * trabajan con strings, no con números
+     * 
+     * proveedor: Se carga el nombre del proveedor asociado al insumo
+     * Si el insumo no tiene proveedor, será null o undefined
+     */
     setFormData({
-      nombre: insumo.nombre,
-      cantidad: insumo.cantidad.toString(),
-      unidad: normalizarUnidad(insumo.unidad),
-      stockMinimo: insumo.stockMinimo.toString(),
-      proveedor: insumo.proveedor
+      nombre: insumo.nombre,                                    // Nombre del insumo
+      cantidad: insumo.cantidad.toString(),                     // Stock actual (convertido a string)
+      unidad: normalizarUnidad(insumo.unidad),                  // Unidad de medida (normalizada)
+      stockMinimo: insumo.stockMinimo.toString(),               // Stock mínimo (convertido a string)
+      proveedor: insumo.proveedor || ''                         // Nombre del proveedor (o cadena vacía si no hay)
     });
+    // Establecer qué insumo se está editando
     setInsumoEditando(insumo);
+    // Mostrar el formulario
     setMostrarFormulario(true);
   };
 
@@ -492,26 +573,51 @@ const GestionInsumos = () => {
       }
     }
 
+    /**
+     * Preparar los datos del insumo para enviar al backend
+     * 
+     * Se convierten los strings del formulario a los tipos correctos:
+     * - cantidad y stockMinimo: de string a número (parseFloat)
+     * - proveedor: se mantiene como string (nombre del proveedor)
+     */
     const datosInsumo = {
-      nombre: formData.nombre,
-      cantidad: parseFloat(formData.cantidad),
-      unidad: formData.unidad,
-      stockMinimo: parseFloat(formData.stockMinimo),
-      proveedor: formData.proveedor
+      nombre: formData.nombre,                                  // Nombre del insumo
+      cantidad: parseFloat(formData.cantidad),                  // Stock (convertido a número)
+      unidad: formData.unidad,                                  // Unidad de medida
+      stockMinimo: parseFloat(formData.stockMinimo),            // Stock mínimo (convertido a número)
+      proveedor: formData.proveedor || null                     // Nombre del proveedor (o null si está vacío)
     };
 
     try {
       if (insumoEditando) {
-        // Actualizar insumo existente usando el ID específico
+        /**
+         * ACTUALIZAR INSUMO EXISTENTE
+         * 
+         * Se actualiza el insumo usando su ID específico
+         * El backend manejará la actualización del proveedor en todos los registros consolidados
+         */
         console.log('🔄 Actualizando insumo:', insumoEditando);
         console.log('🆔 ID específico a actualizar:', insumoEditando.id);
         
+        /**
+         * Llamar a la función updateInsumo con los datos actualizados
+         * 
+         * Los campos enviados al backend:
+         * - nombre: Nombre del insumo
+         * - unidad: Unidad de medida
+         * - stock: Cantidad actual (se envía como 'stock' al backend)
+         * - alerta_stock: Stock mínimo (se envía como 'alerta_stock' al backend)
+         * - proveedor: Nombre del proveedor (string)
+         * 
+         * IMPORTANTE: Si se actualiza el proveedor, el backend actualizará TODOS los registros
+         * consolidados (mismo nombre y unidad) para mantener consistencia en la vista
+         */
         const response = await updateInsumo(insumoEditando.id, {
           nombre: datosInsumo.nombre,
           unidad: datosInsumo.unidad,
           stock: datosInsumo.cantidad,
           alerta_stock: datosInsumo.stockMinimo,
-          proveedor: datosInsumo.proveedor
+          proveedor: datosInsumo.proveedor  // Nombre del proveedor seleccionado
         });
         
         console.log('📤 Respuesta del backend:', response.data);
@@ -1137,23 +1243,63 @@ const GestionInsumos = () => {
                   )}
                 </div>
                 
+                {/* Campo: Proveedor (dropdown) */}
                 <div className="form-group">
+                  {/* Etiqueta del campo */}
                   <label htmlFor="proveedor">Proveedor *</label>
+                  
+                  /**
+                   * Select (dropdown) para seleccionar el proveedor
+                   * 
+                   * Se usa un <select> en lugar de un <input> porque:
+                   * - Permite seleccionar de una lista predefinida de proveedores
+                   * - Evita errores de escritura (typos)
+                   * - Mejora la experiencia del usuario
+                   * 
+                   * value={formData.proveedor} hace que el select sea controlado
+                   * (su valor viene del estado formData)
+                   * 
+                   * onChange={manejarCambioInput} actualiza el estado cuando el usuario selecciona una opción
+                   * 
+                   * required hace que el campo sea obligatorio (validación HTML5)
+                   */
                   <select
-                    id="proveedor"
-                    name="proveedor"
-                    value={formData.proveedor}
-                    onChange={manejarCambioInput}
-                    className="form-control"
-                    required
+                    id="proveedor"                              // ID para asociar con el label
+                    name="proveedor"                            // Nombre del campo (se usa en manejarCambioInput)
+                    value={formData.proveedor || ''}            // Valor actual del select (controlado desde el estado)
+                    onChange={manejarCambioInput}               // Función que se ejecuta al cambiar la selección
+                    className="form-control"                     // Clase CSS para estilizar
+                    required                                    // Campo obligatorio
                   >
+                    {/* Opción por defecto (vacía) */}
                     <option value="">Selecciona un proveedor</option>
+                    
+                    /**
+                     * Mapear cada proveedor a una opción del select
+                     * 
+                     * listaProveedores.map() itera sobre el array de proveedores
+                     * y crea una opción <option> por cada proveedor
+                     * 
+                     * key={proveedor.id_proveedor} es requerido por React para identificar cada elemento
+                     * 
+                     * value={proveedor.nombre} es el valor que se enviará al backend
+                     * Se usa el nombre (no el ID) porque la tabla insumos almacena el nombre del proveedor
+                     * 
+                     * {proveedor.nombre} es el texto visible en el dropdown
+                     */
                     {listaProveedores.map((proveedor) => (
                       <option key={proveedor.id_proveedor} value={proveedor.nombre}>
                         {proveedor.nombre}
                       </option>
                     ))}
                   </select>
+                  
+                  /**
+                   * Mensaje de advertencia si no hay proveedores registrados
+                   * 
+                   * Se muestra solo si listaProveedores.length === 0
+                   * Indica al usuario que debe crear proveedores primero
+                   */
                   {listaProveedores.length === 0 && (
                     <small className="form-help" style={{ color: '#ff9800' }}>
                       ⚠️ No hay proveedores registrados. Ve a "Proveedores" para agregar uno.
