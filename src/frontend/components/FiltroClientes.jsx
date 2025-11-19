@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/FiltroClientes.css';
 
 /**
@@ -29,15 +29,22 @@ const FiltroClientes = ({
    * Aplica los filtros a los clientes
    */
   const aplicarFiltros = (filtrosAplicar) => {
+    // Si no hay clientes, no filtrar nada
+    if (!clientes || clientes.length === 0) {
+      console.log('⚠️ FiltroClientes - No hay clientes para filtrar');
+      onFiltrar([]);
+      return;
+    }
+    
     let clientesFiltrados = [...clientes];
 
     // Filtro de búsqueda
-    if (filtrosAplicar.busqueda) {
+    if (filtrosAplicar.busqueda && filtrosAplicar.busqueda.trim() !== '') {
       const busqueda = filtrosAplicar.busqueda.toLowerCase();
       
       if (filtrosAplicar.tipoFiltro === 'nombre') {
         clientesFiltrados = clientesFiltrados.filter(cliente => 
-          cliente.nombre.toLowerCase().includes(busqueda)
+          cliente.nombre && cliente.nombre.toLowerCase().includes(busqueda)
         );
       } else if (filtrosAplicar.tipoFiltro === 'rut') {
         clientesFiltrados = clientesFiltrados.filter(cliente => 
@@ -46,6 +53,16 @@ const FiltroClientes = ({
       }
     }
 
+    // ELIMINAR DUPLICADOS antes de ordenar
+    const clientesUnicos = new Map();
+    clientesFiltrados.forEach(cliente => {
+      const id = cliente.id_cliente || cliente.id;
+      if (id && !clientesUnicos.has(id)) {
+        clientesUnicos.set(id, cliente);
+      }
+    });
+    clientesFiltrados = Array.from(clientesUnicos.values());
+    
     // Ordenamiento
     clientesFiltrados.sort((a, b) => {
       if (filtrosAplicar.tipoFiltro === 'nombre') {
@@ -68,7 +85,7 @@ const FiltroClientes = ({
   };
 
   /**
-   * Limpia todos los filtros
+   * Limpia todos los filtros y muestra TODOS los clientes (sin duplicados)
    */
   const limpiarFiltros = () => {
     const filtrosLimpios = {
@@ -77,8 +94,36 @@ const FiltroClientes = ({
       orden: 'asc'
     };
     setFiltros(filtrosLimpios);
-    onFiltrar(clientes);
+    // MOSTRAR TODOS los clientes cuando se limpia - SIN duplicados
+    console.log('🔄 FiltroClientes - Limpiando filtros, mostrando TODOS los clientes:', clientes.length);
+    if (clientes && clientes.length > 0) {
+      // Eliminar duplicados antes de enviar
+      const clientesUnicos = new Map();
+      clientes.forEach(cliente => {
+        const id = cliente.id_cliente || cliente.id;
+        if (id && !clientesUnicos.has(id)) {
+          clientesUnicos.set(id, cliente);
+        }
+      });
+      const clientesSinDuplicados = Array.from(clientesUnicos.values());
+      console.log('🔄 FiltroClientes - Enviando', clientesSinDuplicados.length, 'clientes únicos');
+      onFiltrar(clientesSinDuplicados);
+    }
   };
+
+  /**
+   * Efecto para aplicar filtros SOLO cuando el usuario cambia los filtros
+   * NO interfiere con la carga inicial de datos
+   */
+  useEffect(() => {
+    // SOLO aplicar filtros si hay búsqueda activa Y hay clientes
+    // Si no hay búsqueda, NO hacer nada - los datos ya están establecidos en GestionClientes desde la BD
+    if (clientes && clientes.length > 0 && filtros.busqueda && filtros.busqueda.trim() !== '') {
+      aplicarFiltros(filtros);
+    }
+    // NO ejecutar cuando cambian los clientes - solo cuando cambian los filtros del usuario
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros.busqueda, filtros.tipoFiltro, filtros.orden]);
 
   return (
     <div className="filtro-clientes">

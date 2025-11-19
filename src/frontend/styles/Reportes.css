@@ -107,6 +107,13 @@
   font-weight: 600;
 }
 
+.resultados-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
 .resultados-stats {
   display: flex;
   gap: 2rem;
@@ -116,10 +123,45 @@
 .stat-item {
   font-size: 0.9rem;
   opacity: 0.9;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  backdrop-filter: blur(5px);
 }
 
 .stat-item strong {
   font-weight: 600;
+}
+
+.resultados-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-accion-reporte {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--color-blanco);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  white-space: nowrap;
+}
+
+.btn-accion-reporte:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-accion-reporte:active {
+  transform: translateY(0);
 }
 
 /* Contenedor de tabla */
@@ -159,7 +201,13 @@
 .total-cell {
   font-weight: 700;
   color: var(--color-primario);
-  text-align: right;
+  text-align: left;
+}
+
+.ingresos-label {
+  font-weight: 600;
+  color: var(--color-texto);
+  margin-right: 0.5rem;
 }
 
 .producto-cell {

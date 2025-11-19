@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/Sidebar.css';
+import ConfirmModal from '../components/ConfirmModal';
 
 /**
  * Componente Sidebar - Menú lateral dinámico según rol de usuario
  * Muestra diferentes opciones de navegación dependiendo del rol del usuario
  */
 const Sidebar = ({ usuario, vistaActual, onCambiarVista, onCerrarSesion }) => {
+  const [mostrarModalConfirmacion, setMostrarModalConfirmacion] = useState(false);
   
   /**
    * Definición de menús según el rol del usuario
@@ -26,7 +28,8 @@ const Sidebar = ({ usuario, vistaActual, onCambiarVista, onCerrarSesion }) => {
       { id: 'dashboard', nombre: 'Dashboard', icono: '📊', descripcion: 'Panel de ventas' },
       { id: 'punto-venta', nombre: 'Punto de Venta', icono: '🛒', descripcion: 'Sistema de ventas' },
       { id: 'control-caja', nombre: 'Control de Caja', icono: '💰', descripcion: 'Gestión de efectivo' },
-      { id: 'clientes', nombre: 'Clientes', icono: '👤', descripcion: 'Gestión de clientes' }
+      { id: 'clientes', nombre: 'Clientes', icono: '👤', descripcion: 'Gestión de clientes' },
+      { id: 'recetas', nombre: 'Recetas', icono: '📝', descripcion: 'Ver recetas de productos' }
     ]
   };
 
@@ -53,12 +56,25 @@ const Sidebar = ({ usuario, vistaActual, onCambiarVista, onCerrarSesion }) => {
 
   /**
    * Maneja el cierre de sesión
-   * Limpia los datos del usuario y regresa al login
+   * Muestra el modal de confirmación antes de cerrar sesión
    */
   const manejarCerrarSesion = () => {
-    if (window.confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-      onCerrarSesion(); // Llama a la función padre para cerrar sesión
-    }
+    setMostrarModalConfirmacion(true);
+  };
+
+  /**
+   * Confirma el cierre de sesión
+   */
+  const confirmarCerrarSesion = () => {
+    setMostrarModalConfirmacion(false);
+    onCerrarSesion(); // Llama a la función padre para cerrar sesión
+  };
+
+  /**
+   * Cancela el cierre de sesión
+   */
+  const cancelarCerrarSesion = () => {
+    setMostrarModalConfirmacion(false);
   };
 
   return (
@@ -113,12 +129,17 @@ const Sidebar = ({ usuario, vistaActual, onCambiarVista, onCerrarSesion }) => {
         </button>
       </div>
 
-      {/* Información adicional del sistema */}
-      <div className="sidebar-info">
-        <div className="system-info">
-          <small>☕ Habibbi Café v1.0</small>
-        </div>
-      </div>
+      {/* Modal de confirmación para cerrar sesión */}
+      <ConfirmModal
+        isOpen={mostrarModalConfirmacion}
+        title="Cerrar Sesión"
+        message="¿Estás seguro de que quieres cerrar sesión?"
+        confirmText="Sí, Cerrar Sesión"
+        cancelText="Cancelar"
+        icon="🚪"
+        onConfirm={confirmarCerrarSesion}
+        onCancel={cancelarCerrarSesion}
+      />
     </aside>
   );
 };

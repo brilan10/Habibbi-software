@@ -1,0 +1,84 @@
+RewriteEngine On
+
+# =====================================================
+# CONFIGURACIÓN PHP 8.2 - CRÍTICO PARA cPanel
+# =====================================================
+# IMPORTANTE: Cuando cPanel establece PHP 8.2 en MultiPHP Manager,
+# automáticamente crea un .htaccess en la raíz del dominio.
+# Como estamos en un subdirectorio, debemos asegurar que PHP se ejecute.
+
+# Para cPanel con PHP-FPM (la configuración más común):
+# Esta directiva permite que cPanel use su configuración de PHP-FPM
+# Si tienes PHP-FPM habilitado (como muestra el checkmark en MultiPHP Manager),
+# esta configuración debería funcionar.
+
+# NOTA: Si cPanel no está procesando PHP correctamente, puedes descomentar
+# una de estas opciones según tu configuración:
+
+# OPCIÓN A: Si usas PHP 8.2 con módulo tradicional (sin PHP-FPM):
+# <IfModule mod_php82.c>
+#     AddHandler application/x-httpd-php82 .php
+# </IfModule>
+
+# OPCIÓN B: Si usas PHP-FPM y conoces tu usuario de cPanel:
+# Reemplaza [TU_USUARIO] con tu usuario de cPanel
+# <FilesMatch \.php$>
+#     SetHandler "proxy:unix:/var/cpanel/php/sockets/[TU_USUARIO]/php82.sock|fcgi://localhost"
+# </FilesMatch>
+
+# =====================================================
+# CONFIGURACIÓN CORS - MEJORADA PARA COMPATIBILIDAD
+# =====================================================
+
+# Permitir CORS para todas las peticiones (incluyendo desde cualquier origen)
+<IfModule mod_headers.c>
+    # Permitir acceso desde cualquier origen
+    # NOTA: Si necesitas credenciales, debes especificar el origen exacto en lugar de "*"
+    Header always set Access-Control-Allow-Origin "*"
+    
+    # Métodos HTTP permitidos
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    
+    # Headers permitidos en las peticiones
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, X-Auth-Token"
+    
+    # Headers expuestos que el frontend puede leer
+    Header always set Access-Control-Expose-Headers "Content-Length, Content-Type"
+    
+    # Cache preflight requests por 24 horas (mejora rendimiento)
+    Header always set Access-Control-Max-Age "86400"
+</IfModule>
+
+# =====================================================
+# MANEJAR PREFLIGHT REQUESTS (OPTIONS)
+# =====================================================
+
+# Responder inmediatamente a peticiones OPTIONS (preflight)
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L,E=HTTP_ORIGIN:%{HTTP:Origin}]
+
+# =====================================================
+# CONFIGURACIÓN DE SEGURIDAD Y COMPATIBILIDAD
+# =====================================================
+
+# Deshabilitar listado de directorios
+Options -Indexes
+
+# =====================================================
+# RUTAS Y REWRITING
+# =====================================================
+
+# Redirigir todas las peticiones a index.php
+# EXCEPCIONES: No redirigir archivos que existen físicamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# Redirigir todo lo demás a index.php
+RewriteRule ^(.*)$ index.php [QSA,L,E=HTTP_ORIGIN:%{HTTP:Origin}]
+
+# =====================================================
+# CONFIGURAR TIPOS MIME
+# =====================================================
+
+AddType application/json .json
+AddType application/javascript .js
+AddType text/css .css

@@ -96,9 +96,9 @@ composer.lock
 *.php~
 
 # Database
-*.sql
 *.db
 *.sqlite
+# Nota: Los archivos SQL de estructura se mantienen en database/
 
 # Temporary files
 tmp/

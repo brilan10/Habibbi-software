@@ -19,6 +19,8 @@ import './styles/index.css';
  * Maneja la autenticación y navegación entre vistas
  */
 const App = () => {
+  console.log('🔄 Componente App renderizado');
+  
   // Estado para el usuario autenticado
   const [usuario, setUsuario] = useState(null);
   
@@ -30,6 +32,15 @@ const App = () => {
    * Recibe los datos del usuario y lo autentica
    */
   const manejarLogin = (usuarioData) => {
+    // Guardar usuario en localStorage y sessionStorage para persistencia
+    try {
+      localStorage.setItem('usuario', JSON.stringify(usuarioData));
+      sessionStorage.setItem('usuario', JSON.stringify(usuarioData));
+      console.log('✅ Usuario guardado en localStorage:', usuarioData);
+    } catch (error) {
+      console.error('⚠️ Error al guardar usuario en localStorage:', error);
+    }
+    
     setUsuario(usuarioData);
     
     // Redirige según el rol del usuario
@@ -57,6 +68,23 @@ const App = () => {
     setVistaActual(nuevaVista);
   };
 
+  // Escuchar eventos personalizados para cambiar de vista desde otros componentes
+  React.useEffect(() => {
+    const manejarCambioVista = (event) => {
+      const nuevaVista = event.detail?.vista;
+      if (nuevaVista) {
+        console.log('🔄 Cambiando vista desde evento:', nuevaVista);
+        cambiarVista(nuevaVista);
+      }
+    };
+
+    window.addEventListener('cambiarVista', manejarCambioVista);
+    
+    return () => {
+      window.removeEventListener('cambiarVista', manejarCambioVista);
+    };
+  }, []);
+
   /**
    * Función para renderizar la vista actual
    * Retorna el componente correspondiente según la vista seleccionada
@@ -71,7 +99,7 @@ const App = () => {
       case 'productos':
         return <GestionProductos />;
       case 'recetas':
-        return <GestionRecetas />;
+        return <GestionRecetas usuario={usuario} />;
       case 'insumos':
         return <GestionInsumos />;
       case 'usuarios':
@@ -89,6 +117,7 @@ const App = () => {
 
   // Si no hay usuario autenticado, muestra el login
   if (!usuario) {
+    console.log('👤 No hay usuario, mostrando Login');
     return <Login onLogin={manejarLogin} />;
   }
 

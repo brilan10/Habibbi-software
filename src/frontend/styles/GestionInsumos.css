@@ -1,4 +1,205 @@
+/* Confirmación de eliminación elegante */
+.confirmacion-eliminar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.confirmacion-eliminar-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.confirmacion-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.confirmacion-icon {
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.confirmacion-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.confirmacion-content {
+  margin-bottom: 24px;
+}
+
+.confirmacion-content p {
+  margin: 0 0 8px 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.confirmacion-warning {
+  color: #f44336;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.confirmacion-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-cancelar {
+  padding: 10px 20px;
+  border: 2px solid #ddd;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.btn-confirmar {
+  padding: 10px 20px;
+  border: none;
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.btn-confirmar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+/* Campo auto-rellenado */
+.form-control.auto-filled {
+  background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+  border: 2px solid #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  animation: autoFillPulse 0.5s ease-out;
+}
+
+@keyframes autoFillPulse {
+  0% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.3);
+  }
+  50% { 
+    transform: scale(1.02);
+    box-shadow: 0 0 0 5px rgba(76, 175, 80, 0.2);
+  }
+  100% { 
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  }
+}
+
+.auto-filled-indicator {
+  display: block;
+  color: #4caf50;
+  font-weight: bold;
+  font-size: 11px;
+  margin-top: 4px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Advertencia de insumo existente */
+.insumo-existente-warning {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #856404;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Badge para registros consolidados */
+.consolidado-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
 /* Estilos para la Gestión de Insumos */
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 .gestion-insumos-container {
   margin-left: 280px; /* Espacio para el sidebar */
@@ -168,8 +369,19 @@
 
 .cantidad-cell {
   min-width: 100px;
+  text-align: right;
+  font-weight: 500;
 }
 
+.cantidad-display {
+  display: inline-block;
+  padding: 4px 8px;
+  color: var(--color-texto);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Estilos antiguos para cantidad-input (ya no se usa) */
 .cantidad-input {
   width: 80px;
   padding: 0.25rem 0.5rem;
@@ -428,4 +640,52 @@
   .form-buttons {
     flex-direction: column;
   }
+}
+
+/* Estilos para insumos inactivos */
+.insumo-inactivo {
+  background-color: #f8f8f8 !important;
+  opacity: 0.7;
+}
+
+.insumo-inactivo td {
+  color: #666 !important;
+}
+
+.inactivo-badge {
+  background-color: #ff6b6b;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.estado-badge.inactivo {
+  background-color: #ff6b6b;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85em;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.btn-accion.reactivar {
+  background-color: #4CAF50 !important;
+  color: white !important;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-accion.reactivar:hover {
+  background-color: #45a049 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
