@@ -26,68 +26,11 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
 
   // =====================================================
-  // SCRIPT DE PRUEBA - Cargar usuarios al iniciar
+  // LIMPIAR ERRORES AL CARGAR
   // =====================================================
   useEffect(() => {
-    // Función para obtener usuarios del servidor
-    const cargarUsuariosPrueba = async () => {
-      try {
-        console.log('🔍 ========== PRUEBA DE CONEXIÓN A BASE DE DATOS ==========');
-        console.log('🔍 Verificando conexión al servidor...');
-        
-        // Intentar obtener usuarios del endpoint de prueba
-        const testUrl = API_CONFIG.BASE_URL + '/test_usuarios.php';
-        console.log('🔍 URL de prueba:', testUrl);
-        
-        const response = await apiClient.get('/test_usuarios.php');
-        
-        if (response.data && response.data.success) {
-          console.log('✅ ========== CONEXIÓN EXITOSA ==========');
-          console.log('✅ Total de usuarios encontrados:', response.data.total);
-          console.log('');
-          console.log('📋 ========== LISTA DE USUARIOS ==========');
-          
-          response.data.usuarios.forEach((usuario, index) => {
-            console.log(`\n👤 USUARIO #${index + 1}:`);
-            console.log('   ID:', usuario.id_usuario);
-            console.log('   Nombre:', usuario.nombre, usuario.apellido);
-            console.log('   Correo:', usuario.correo);
-            console.log('   Rol:', usuario.rol);
-            console.log('   Activo:', usuario.activo ? 'Sí' : 'No');
-            console.log('   Tipo de contraseña:', usuario.clave_tipo);
-            console.log('   Contraseña (preview):', usuario.clave_preview);
-            console.log('   Contraseña (completa):', usuario.clave);
-          });
-          
-          console.log('');
-          console.log('✅ ========== FIN DE PRUEBA ==========');
-          console.log('💡 Puedes usar estos datos para probar el login');
-          
-        } else {
-          console.error('❌ Error al obtener usuarios:', response.data);
-        }
-      } catch (error) {
-        // NO bloquear el renderizado si hay error en la prueba
-        console.warn('⚠️ ========== ADVERTENCIA EN PRUEBA ==========');
-        console.warn('⚠️ No se pudo conectar al servidor de prueba');
-        console.warn('⚠️ URL intentada:', API_CONFIG.BASE_URL + '/test_usuarios.php');
-        console.warn('⚠️ Esto NO afecta el funcionamiento del login');
-        
-        if (error.response) {
-          console.warn('⚠️ Error del servidor:', error.response.status);
-        } else if (error.request) {
-          console.warn('⚠️ No se recibió respuesta del servidor');
-        } else {
-          console.warn('⚠️ Error:', error.message);
-        }
-      }
-    };
-    
-    // Ejecutar la prueba al cargar el componente (sin bloquear renderizado)
-    // Usar setTimeout para no bloquear el render inicial
-    setTimeout(() => {
-      cargarUsuariosPrueba();
-    }, 1000);
+    // Limpiar cualquier error al cargar el componente
+    setError('');
   }, []); // Solo se ejecuta una vez al cargar
 
   /**
@@ -139,16 +82,8 @@ const Login = ({ onLogin }) => {
       console.log('🌐 BASE_URL configurado:', API_CONFIG.BASE_URL);
       console.log('🔗 Endpoint completo:', urlCompleta);
       
-      // Verificar primero que el backend esté disponible
-      try {
-        const healthCheck = await apiClient.get('/api/health');
-        console.log('✅ Backend disponible:', healthCheck.data);
-      } catch (healthError) {
-        console.warn('⚠️ No se pudo verificar salud del backend:', healthError.message);
-        console.warn('⚠️ Continuando con login de todas formas...');
-      }
-      
       // Usar apiClient que tiene mejor manejo de errores y configuración
+      // Intentar el login directamente - el health check puede fallar por CORS pero el login puede funcionar
       const response = await apiClient.post(loginUrl, datosEnviados);
       
       console.log('Respuesta del servidor:', response.data);
@@ -199,7 +134,7 @@ const Login = ({ onLogin }) => {
           setError(`No se pudo conectar al servidor. Verifica que:
           
 1. XAMPP esté corriendo (Apache y MySQL)
-2. El backend esté en: C:\\xampp\\htdocs\\habibbi-backend\\
+2. El backend esté en la carpeta htdocs de tu XAMPP (ej: D:\\XamppNuevo\\htdocs\\habibbi-backend\\)
 3. La URL sea correcta: ${API_CONFIG.BASE_URL}
 
 Prueba abrir en el navegador: ${API_CONFIG.BASE_URL}/api/health`);
@@ -233,7 +168,7 @@ Verifica:
   };
 
   console.log('🎨 Renderizando JSX del Login');
-  
+
   return (
     <div className="login-container">
       <div className="login-card">

@@ -334,7 +334,7 @@ const DashboardVendedor = () => {
             return formatearMoneda(value);
           },
           stepSize: 1000
-        }
+          }
       },
       x: {
         ticks: {

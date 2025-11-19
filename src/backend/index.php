@@ -52,50 +52,18 @@ error_log("📥 SCRIPT_NAME: " . ($_SERVER['SCRIPT_NAME'] ?? 'NO DEFINIDO'));
 error_log("📥 QUERY_STRING: " . ($_SERVER['QUERY_STRING'] ?? 'NO DEFINIDO'));
 
 // =====================================================
-// CONFIGURACIÓN CORS - HEADERS ADICIONALES EN PHP
+// CONFIGURACIÓN CORS - HEADERS MANEJADOS POR .htaccess
 // =====================================================
 
 /**
  * CORS (Cross-Origin Resource Sharing)
  * 
- * Permite que el frontend (que está en un dominio diferente o puerto diferente)
- * pueda hacer peticiones al backend sin que el navegador las bloquee
+ * IMPORTANTE: Los headers CORS están configurados en el archivo .htaccess
+ * para evitar duplicación. Si necesitas agregar headers adicionales aquí,
+ * asegúrate de que no dupliquen los del .htaccess.
  * 
- * IMPORTANTE: Los headers principales están en .htaccess, pero añadimos
- * estos headers aquí para mayor compatibilidad y para casos donde .htaccess no se procese
- * 
- * PROBLEMA QUE RESUELVE:
- * Sin CORS, el navegador bloquea peticiones entre diferentes orígenes
- * (ej: frontend en localhost:3000 y backend en localhost/habibbi-backend)
+ * NOTA: Solo establecemos Content-Type aquí porque es específico de la respuesta JSON
  */
-
-// Obtener el origen de la petición (de dónde viene la petición)
-// $_SERVER['HTTP_ORIGIN'] contiene el dominio del frontend que hace la petición
-// Si no existe, usar '*' que permite cualquier origen
-// isset() verifica si la variable existe y no es null
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-
-// Headers CORS mejorados
-// Estos headers le dicen al navegador que permita la petición
-
-// Access-Control-Allow-Origin: Permite qué dominios pueden hacer peticiones
-// '*' permite cualquier dominio (útil para desarrollo, en producción debería ser específico)
-header('Access-Control-Allow-Origin: *');
-
-// Access-Control-Allow-Methods: Métodos HTTP permitidos
-// GET: obtener datos, POST: crear, PUT: actualizar, DELETE: eliminar, OPTIONS: preflight, PATCH: actualización parcial
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-
-// Access-Control-Allow-Headers: Headers que el frontend puede enviar
-// Content-Type: tipo de contenido (JSON), Authorization: token de autenticación, etc.
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, X-Auth-Token');
-
-// Access-Control-Expose-Headers: Headers que el frontend puede leer de la respuesta
-header('Access-Control-Expose-Headers: Content-Length, Content-Type');
-
-// Access-Control-Max-Age: Tiempo que el navegador puede cachear la respuesta de preflight (24 horas)
-// Esto evita que el navegador haga preflight en cada petición
-header('Access-Control-Max-Age: 86400');
 
 // Content-Type: Indica que todas las respuestas serán JSON con codificación UTF-8
 // Esto asegura que el frontend sepa cómo interpretar la respuesta
@@ -119,10 +87,9 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     // Log para debugging
     error_log("📥 Preflight OPTIONS request - Respondiendo con 200");
-    error_log("📥 Origin: " . $origin);
     
     // Responder con código 200 (OK) y terminar la ejecución
-    // Los headers CORS ya fueron enviados arriba, así que el navegador los verá
+    // Los headers CORS están en .htaccess, así que el navegador los verá
     http_response_code(200);
     exit(); // Terminar la ejecución aquí, no necesitamos procesar más
 }
@@ -181,6 +148,14 @@ if (strpos($path, $basePath) === 0) {
  * Cada case usa strpos() para verificar si el path contiene cierto texto
  */
 
+// Log del path final antes del switch para debugging
+error_log("📥 ========== DEBUGGING PATH ==========");
+error_log("📥 Path final antes del switch: [" . $path . "]");
+error_log("📥 Longitud del path: " . strlen($path));
+error_log("📥 strpos('/api/proveedores'): " . var_export(strpos($path, '/api/proveedores'), true));
+error_log("📥 Comparación strpos !== false: " . var_export(strpos($path, '/api/proveedores') !== false, true));
+error_log("📥 ====================================");
+
 // Bloque try-catch para manejar errores durante el enrutamiento
 try {
     // switch(true) permite hacer múltiples comparaciones
@@ -224,53 +199,91 @@ try {
             require_once 'controllers/AuthController.php';
             break;
             
-        // Usuarios
+        // =====================================================
+        // RUTAS DE USUARIOS
+        // =====================================================
+        // Endpoints: GET /api/usuarios, GET /api/usuarios/{id}, POST /api/usuarios, PUT /api/usuarios/{id}, DELETE /api/usuarios/{id}
+        // Propósito: Gestión completa de usuarios del sistema (CRUD)
         case strpos($path, '/api/usuarios') !== false:
+            // Cargar el controlador de usuarios
             require_once 'controllers/UsuariosController.php';
+            // Crear instancia del controlador
             $usuariosController = new UsuariosController();
             
+            // Obtener el método HTTP de la petición (GET, POST, PUT, DELETE)
             $method = $_SERVER['REQUEST_METHOD'];
+            
+            // Extraer el ID del usuario de la URL usando expresión regular
+            // Ejemplo: '/api/usuarios/5' → captura '5'
+            // preg_match() busca un patrón en el string y guarda los grupos capturados en $matches
+            // El patrón '/\/api\/usuarios\/(\d+)/' busca: /api/usuarios/ seguido de uno o más dígitos
+            // \d+ significa uno o más dígitos, los paréntesis () capturan el grupo
             preg_match('/\/api\/usuarios\/(\d+)/', $path, $matches);
+            // Si se encontró un ID, convertirlo a entero; si no, usar null
+            // isset() verifica si existe el índice en el array
+            // intval() convierte el string a entero
             $id = isset($matches[1]) ? intval($matches[1]) : null;
             
+            // Enrutar según el método HTTP
             switch ($method) {
                 case 'GET':
+                    // GET: Obtener datos
                     if ($id) {
+                        // Si hay ID, obtener un usuario específico
                         $usuariosController->obtener($id);
                     } else {
+                        // Si no hay ID, listar todos los usuarios
                         $usuariosController->listar();
                     }
                     break;
                 case 'POST':
+                    // POST: Crear nuevo usuario
+                    // Los datos vienen en el body de la petición (JSON)
                     $usuariosController->crear();
                     break;
                 case 'PUT':
+                    // PUT: Actualizar usuario existente
                     if ($id) {
+                        // Si hay ID, actualizar ese usuario
                         $usuariosController->actualizar($id);
                     } else {
+                        // Si no hay ID, retornar error 400 (Bad Request)
                         $usuariosController->sendResponse(400, ['error' => 'ID de usuario requerido']);
                     }
                     break;
                 case 'DELETE':
+                    // DELETE: Eliminar usuario (soft delete)
                     if ($id) {
+                        // Si hay ID, eliminar ese usuario
                         $usuariosController->eliminar($id);
                     } else {
+                        // Si no hay ID, retornar error 400
                         $usuariosController->sendResponse(400, ['error' => 'ID de usuario requerido']);
                     }
                     break;
                 default:
+                    // Si el método no es ninguno de los anteriores, retornar error 405 (Method Not Allowed)
                     $usuariosController->sendResponse(405, ['error' => 'Método no permitido']);
                     break;
             }
             break;
             
-        // Clientes
+        // =====================================================
+        // RUTAS DE CLIENTES
+        // =====================================================
+        // Endpoints: GET /api/clientes, GET /api/clientes/{id}, GET /api/clientes/{id}/ventas, POST /api/clientes, PUT /api/clientes/{id}, DELETE /api/clientes/{id}
+        // Propósito: Gestión completa de clientes (CRUD) y consulta de historial de compras
         case strpos($path, '/api/clientes') !== false:
+            // Definir constante para indicar que el enrutamiento se hace desde index.php
+            // Algunos controladores verifican esto para saber cómo fueron llamados
             define('CLIENTES_ROUTED_BY_INDEX', true);
+            
+            // Cargar y crear instancia del controlador de clientes
             require_once 'controllers/ClientesController.php';
             $clientesController = new ClientesController();
             
-            // Extraer ID si existe
+            // Extraer ID del cliente de la URL si existe
+            // Ejemplo: '/api/clientes/10' → captura '10'
             preg_match('/\/api\/clientes\/(\d+)/', $path, $matches);
             $id = isset($matches[1]) ? intval($matches[1]) : null;
             
@@ -278,19 +291,25 @@ try {
             switch ($_SERVER['REQUEST_METHOD']) {
                 case 'GET':
                     if ($id) {
+                        // Si hay ID, verificar si es una petición de historial de ventas
                         if (strpos($path, '/ventas') !== false) {
+                            // GET /api/clientes/{id}/ventas - Obtener historial de compras del cliente
                             $clientesController->historialCompras($id);
                         } else {
+                            // GET /api/clientes/{id} - Obtener datos de un cliente específico
                             $clientesController->obtener($id);
                         }
                     } else {
+                        // GET /api/clientes - Listar todos los clientes
                         $clientesController->listar();
                     }
                     break;
                 case 'POST':
+                    // POST /api/clientes - Crear nuevo cliente
                     $clientesController->crear();
                     break;
                 case 'PUT':
+                    // PUT /api/clientes/{id} - Actualizar cliente existente
                     if ($id) {
                         $clientesController->actualizar($id);
                     } else {
@@ -298,6 +317,7 @@ try {
                     }
                     break;
                 case 'DELETE':
+                    // DELETE /api/clientes/{id} - Eliminar cliente (soft delete)
                     if ($id) {
                         $clientesController->eliminar($id);
                     } else {
@@ -305,16 +325,95 @@ try {
                     }
                     break;
                 default:
+                    // Método HTTP no permitido
                     $clientesController->sendResponse(405, ['error' => 'Método no permitido']);
                     break;
             }
             break;
             
-        // Productos
+        // =====================================================
+        // RUTAS DE PROVEEDORES (DEBE ir ANTES de productos para evitar conflictos)
+        // =====================================================
+        // Endpoints: GET /api/proveedores, GET /api/proveedores/{id}, POST /api/proveedores, PUT /api/proveedores/{id}, DELETE /api/proveedores/{id}
+        // Propósito: Gestión completa de proveedores (CRUD)
+        case strpos($path, '/api/proveedores') !== false:
+            // Log para debugging
+            error_log("🏢 RUTA PROVEEDORES DETECTADA - Path: " . $path);
+            error_log("🏢 Método HTTP: " . $_SERVER['REQUEST_METHOD']);
+            
+            // Definir constante para indicar que el enrutamiento se hace desde index.php
+            define('PROVEEDORES_ROUTED_BY_INDEX', true);
+            
+            // Cargar y crear instancia del controlador de proveedores
+            require_once 'controllers/ProveedoresController.php';
+            $proveedoresController = new ProveedoresController();
+            
+            // Obtener el método HTTP de la petición
+            $method = $_SERVER['REQUEST_METHOD'];
+            
+            // Extraer el ID del proveedor de la URL si existe
+            preg_match('/\/api\/proveedores\/(\d+)/', $path, $matches);
+            $id = isset($matches[1]) ? intval($matches[1]) : null;
+            
+            error_log("🏢 ID extraído: " . ($id ?? 'null'));
+            
+            // Enrutar según el método HTTP
+            switch ($method) {
+                case 'GET':
+                    if ($id) {
+                        // GET /api/proveedores/{id} - Obtener un proveedor específico
+                        error_log("🏢 Llamando a obtener($id)");
+                        $proveedoresController->obtener($id);
+                    } else {
+                        // GET /api/proveedores - Listar todos los proveedores
+                        error_log("🏢 Llamando a listar()");
+                        $proveedoresController->listar();
+                    }
+                    break;
+                case 'POST':
+                    // POST /api/proveedores - Crear nuevo proveedor
+                    error_log("🏢 Llamando a crear()");
+                    $proveedoresController->crear();
+                    break;
+                case 'PUT':
+                    // PUT /api/proveedores/{id} - Actualizar proveedor existente
+                    if ($id) {
+                        error_log("🏢 Llamando a actualizar($id)");
+                        $proveedoresController->actualizar($id);
+                    } else {
+                        error_log("🏢 Error: ID requerido para PUT");
+                        $proveedoresController->sendResponse(400, ['error' => 'ID requerido']);
+                    }
+                    break;
+                case 'DELETE':
+                    // DELETE /api/proveedores/{id} - Eliminar proveedor (soft delete)
+                    if ($id) {
+                        error_log("🏢 Llamando a eliminar($id)");
+                        $proveedoresController->eliminar($id);
+                    } else {
+                        error_log("🏢 Error: ID requerido para DELETE");
+                        $proveedoresController->sendResponse(400, ['error' => 'ID requerido']);
+                    }
+                    break;
+                default:
+                    // Método HTTP no permitido
+                    error_log("🏢 Error: Método no permitido: " . $method);
+                    $proveedoresController->sendResponse(405, ['error' => 'Método no permitido']);
+                    break;
+            }
+            break;
+            
+        // =====================================================
+        // RUTAS DE PRODUCTOS
+        // =====================================================
+        // Endpoints: Varios (el controlador tiene su propio enrutador interno)
+        // Propósito: Gestión de productos del catálogo
+        // NOTA: ProductosController tiene su propio sistema de enrutamiento al final del archivo
+        // Solo cargamos el archivo y el controlador se encarga del resto
         case strpos($path, '/api/productos') !== false:
             require_once 'controllers/ProductosController.php';
             // El ProductosController tiene su propio enrutador al final del archivo
-            // Solo lo incluimos y el archivo se ejecutará
+            // Solo lo incluimos y el archivo se ejecutará automáticamente
             break;
             
         // Endpoint específico para vasos (DEBE ir ANTES de insumos)
@@ -488,50 +587,83 @@ try {
             }
             break;
             
-        // Ventas
+        // =====================================================
+        // RUTAS DE VENTAS
+        // =====================================================
+        // Endpoints: Varios (el controlador tiene su propio enrutador interno)
+        // Propósito: Gestión de ventas y transacciones
         case strpos($path, '/api/ventas') !== false:
+            // VentasController tiene su propio sistema de enrutamiento
             require_once 'controllers/VentasController.php';
             break;
             
-        // Caja
+        // =====================================================
+        // RUTAS DE CAJA
+        // =====================================================
+        // Endpoints: Varios para gestión de caja
+        // Propósito: Control de apertura, cierre y movimientos de caja
         case strpos($path, '/api/caja') !== false:
             require_once 'controllers/CajaController.php';
             $cajaController = new CajaController();
+            // El controlador tiene su propio enrutador interno
             break;
             
-        // Dashboard
+        // =====================================================
+        // RUTAS DE DASHBOARD
+        // =====================================================
+        // Endpoints: GET /api/dashboard/admin, GET /api/dashboard/vendedor
+        // Propósito: Obtener estadísticas y datos para los dashboards
         case strpos($path, '/api/dashboard') !== false:
             require_once 'controllers/DashboardController.php';
             $dashboardController = new DashboardController();
             
             // Determinar qué método llamar según la URL
+            // El dashboard es diferente para admin y vendedor
             if (strpos($path, '/api/dashboard/admin') !== false) {
+                // Dashboard para administradores con estadísticas completas
                 $dashboardController->admin();
             } elseif (strpos($path, '/api/dashboard/vendedor') !== false) {
+                // Dashboard para vendedores con estadísticas simplificadas
                 $dashboardController->vendedor();
             } else {
+                // Si la ruta no coincide con ninguna, retornar error 404
                 http_response_code(404);
                 echo json_encode(['error' => 'Endpoint de dashboard no encontrado'], JSON_UNESCAPED_UNICODE);
             }
             break;
             
-        // Estadísticas
+        // =====================================================
+        // RUTAS DE ESTADÍSTICAS
+        // =====================================================
+        // Endpoints: Varios para diferentes tipos de estadísticas
+        // Propósito: Obtener estadísticas detalladas del negocio
         case strpos($path, '/api/estadisticas') !== false:
             require_once 'controllers/EstadisticasController.php';
             $estadisticasController = new EstadisticasController();
+            // El controlador tiene su propio enrutador interno
             break;
             
-        // Machine Learning / Predicciones
+        // =====================================================
+        // RUTAS DE MACHINE LEARNING / PREDICCIONES
+        // =====================================================
+        // Endpoints: Varios para predicciones y recomendaciones
+        // Propósito: Predicciones estacionales y recomendaciones de productos
         case strpos($path, '/api/ml') !== false:
             require_once 'controllers/MLController.php';
             $mlController = new MLController();
+            // route() maneja el enrutamiento interno del controlador ML
             $mlController->route();
             break;
             
-        // Reportes
+        // =====================================================
+        // RUTAS DE REPORTES
+        // =====================================================
+        // Endpoints: Varios para generar reportes
+        // Propósito: Generar reportes de ventas, productos, vendedores, etc.
         case strpos($path, '/api/reportes') !== false:
             require_once 'controllers/ReportesController.php';
             $reportesController = new ReportesController();
+            // route() maneja el enrutamiento interno del controlador de reportes
             $reportesController->route();
             break;
             
@@ -550,18 +682,26 @@ try {
             require_once 'debug_endpoint.php';
             break;
             
-        // Health check
+        // =====================================================
+        // RUTAS ESPECIALES
+        // =====================================================
+        
+        // Health check - Verificar que el API está funcionando
+        // Útil para monitoreo y verificación de que el servidor responde
         case $path === '/api/health' || $path === '/health':
+            // Retornar JSON con información del estado del API
             echo json_encode([
-                'status' => 'OK',
-                'message' => 'Habibbi Café API funcionando',
-                'timestamp' => date('Y-m-d H:i:s'),
-                'version' => '1.0.0'
-            ], JSON_UNESCAPED_UNICODE);
+                'status' => 'OK',                                    // Estado del API
+                'message' => 'Habibbi Café API funcionando',          // Mensaje descriptivo
+                'timestamp' => date('Y-m-d H:i:s'),                  // Fecha y hora actual
+                'version' => '1.0.0'                                  // Versión del API
+            ], JSON_UNESCAPED_UNICODE);  // JSON_UNESCAPED_UNICODE permite caracteres especiales (acentos, etc.)
             break;
             
-        // Endpoint raíz
+        // Endpoint raíz - Información del API
+        // Se muestra cuando se accede a la raíz del API sin especificar endpoint
         case $path === '/' || $path === '/api':
+            // Retornar JSON con información del API y lista de endpoints disponibles
             echo json_encode([
                 'message' => '¡Bienvenido a Habibbi Café API!',
                 'version' => '1.0.0',
@@ -582,15 +722,22 @@ try {
             ], JSON_UNESCAPED_UNICODE);
             break;
             
+        // =====================================================
+        // RUTA POR DEFECTO - ENDPOINT NO ENCONTRADO
+        // =====================================================
+        // Si ninguna de las rutas anteriores coincide, mostrar error 404
         default:
+            // Código de estado HTTP 404 (Not Found)
             http_response_code(404);
+            // Retornar JSON con información del error
             echo json_encode([
-                'error' => 'Endpoint no encontrado',
-                'path' => $path,
-                'available_endpoints' => [
+                'error' => 'Endpoint no encontrado',                 // Mensaje de error
+                'path' => $path,                                      // Path que se intentó acceder
+                'available_endpoints' => [                            // Lista de endpoints disponibles
                     '/api/auth/login',
                     '/api/usuarios',
                     '/api/clientes',
+                    '/api/proveedores',
                     '/api/productos',
                     '/api/ventas',
                     '/api/caja',
@@ -602,10 +749,20 @@ try {
     }
     
 } catch (Exception $e) {
+    // =====================================================
+    // MANEJO DE ERRORES GLOBALES
+    // =====================================================
+    // Si ocurre cualquier excepción durante el enrutamiento o ejecución,
+    // se captura aquí y se retorna un error 500 (Internal Server Error)
+    
+    // Código de estado HTTP 500 (Internal Server Error)
     http_response_code(500);
+    
+    // Retornar JSON con información del error
+    // En producción, no deberías exponer el mensaje completo del error por seguridad
     echo json_encode([
-        'error' => 'Error interno del servidor',
-        'message' => $e->getMessage()
+        'error' => 'Error interno del servidor',                     // Mensaje genérico para el usuario
+        'message' => $e->getMessage()                                 // Mensaje detallado del error (útil para debugging)
     ], JSON_UNESCAPED_UNICODE);
 }
 ?>

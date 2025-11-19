@@ -590,8 +590,8 @@ const Reportes = () => {
               resumenSemanal.push({
                 'Concepto': 'Ingresos Mejor Día',
                 'Valor': formatearMonedaCLP(mejorDia.ingresos_dia || 0)
-              });
-            }
+            });
+          }
           }
           
           const wsResumenSemanal = XLSX.utils.json_to_sheet(resumenSemanal);
@@ -608,10 +608,10 @@ const Reportes = () => {
 
       // Crear libro de Excel (solo si no es reporte de ventas, que ya se descargó arriba)
       if (tipoReporte !== 'ventas') {
-        const ws = XLSX.utils.json_to_sheet(datosParaExcel);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
-        XLSX.writeFile(wb, `${nombreArchivo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const ws = XLSX.utils.json_to_sheet(datosParaExcel);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+      XLSX.writeFile(wb, `${nombreArchivo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
       }
     } catch (error) {
       console.error('Error exportando automáticamente:', error);

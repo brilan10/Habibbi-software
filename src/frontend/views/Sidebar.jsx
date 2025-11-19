@@ -20,6 +20,7 @@ const Sidebar = ({ usuario, vistaActual, onCambiarVista, onCerrarSesion }) => {
       { id: 'productos', nombre: 'Productos', icono: '☕', descripcion: 'Gestión de productos' },
       { id: 'recetas', nombre: 'Recetas', icono: '📝', descripcion: 'Recetas de productos' },
       { id: 'insumos', nombre: 'Insumos', icono: '📦', descripcion: 'Control de inventario' },
+      { id: 'proveedores', nombre: 'Proveedores', icono: '🏢', descripcion: 'Gestión de proveedores' },
       { id: 'usuarios', nombre: 'Usuarios', icono: '👥', descripcion: 'Gestión de usuarios' },
       { id: 'reportes', nombre: 'Reportes', icono: '📈', descripcion: 'Reportes y estadísticas' }
     ],

@@ -12,8 +12,8 @@ module.exports = {
     filename: 'bundle.js',
     // IMPORTANTE: 
     // - Desarrollo local: '/' (webpack-dev-server sirve desde raíz)
-    // - Producción: '/dist/' (servidor real sirve desde /dist/bundle.js)
-    publicPath: isProduction ? '/dist/' : '/',
+    // - Producción: '/' (servidor real sirve desde /bundle.js en la misma carpeta que index.html)
+    publicPath: '/',
     clean: true // Limpia la carpeta dist al compilar
   },
   module: {

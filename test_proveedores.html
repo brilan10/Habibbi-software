@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Proveedores API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            background: #8B4513;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #654321;
+        }
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de API Proveedores</h1>
+    <p>Este script prueba el endpoint <code>/api/proveedores</code> directamente.</p>
+    
+    <button onclick="testProveedores()">Probar GET /api/proveedores</button>
+    <button onclick="testHealth()">Probar Health Check</button>
+    
+    <div id="resultado"></div>
+
+    <script>
+        // URL base del backend
+        const BASE_URL = 'http://localhost/habibbi-backend';
+        
+        async function testProveedores() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = '🔄 Probando endpoint /api/proveedores...\n';
+            
+            try {
+                const url = BASE_URL + '/api/proveedores?_t=' + Date.now();
+                console.log('URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                
+                resultado.innerHTML = `
+                    <div class="success">✅ Respuesta recibida</div>
+                    <strong>Status:</strong> ${response.status} ${response.statusText}\n
+                    <strong>URL:</strong> ${url}\n
+                    <strong>Datos:</strong>\n${JSON.stringify(data, null, 2)}
+                `;
+            } catch (error) {
+                resultado.innerHTML = `
+                    <div class="error">❌ Error</div>
+                    <strong>Mensaje:</strong> ${error.message}\n
+                    <strong>Stack:</strong> ${error.stack}
+                `;
+                console.error('Error:', error);
+            }
+        }
+        
+        async function testHealth() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = '🔄 Probando health check...\n';
+            
+            try {
+                const url = BASE_URL + '/api/health';
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                resultado.innerHTML = `
+                    <div class="success">✅ Health Check OK</div>
+                    <strong>Status:</strong> ${response.status}\n
+                    <strong>Datos:</strong>\n${JSON.stringify(data, null, 2)}
+                `;
+            } catch (error) {
+                resultado.innerHTML = `
+                    <div class="error">❌ Error en Health Check</div>
+                    <strong>Mensaje:</strong> ${error.message}
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

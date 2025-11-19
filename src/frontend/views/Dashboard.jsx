@@ -476,8 +476,8 @@ const Dashboard = () => {
     try {
       if (!lista || !Array.isArray(lista) || lista.length === 0) {
         console.log('Lista vacía o inválida:', lista);
-        return null;
-      }
+      return null;
+    }
       
       // Filtrar productos que tienen datos válidos
       const productosValidos = lista.filter(item => {
@@ -527,17 +527,17 @@ const Dashboard = () => {
       }
       
       const datosPreparados = {
-        labels,
-        datasets: [
-          {
-            label: 'Unidades vendidas',
-            data,
+      labels,
+      datasets: [
+        {
+          label: 'Unidades vendidas',
+          data,
             backgroundColor: coloresDisponibles,
             borderWidth: 2,
             borderColor: '#fff'
-          }
-        ]
-      };
+        }
+      ]
+    };
       
       console.log('Datos de dona preparados exitosamente:', datosPreparados);
       return datosPreparados;
@@ -618,10 +618,10 @@ const Dashboard = () => {
       default:
         // Combinar todos los productos de todas las categorías
         productosFiltrados = [
-          ...(productosCafeEstacion || []),
-          ...(productosPanaderiaEstacion || []),
-          ...(productosPasteleriaEstacion || []),
-          ...(productosEnergizantesEstacion || []),
+    ...(productosCafeEstacion || []),
+    ...(productosPanaderiaEstacion || []),
+    ...(productosPasteleriaEstacion || []),
+    ...(productosEnergizantesEstacion || []),
           ...(productosEmpanadasEstacion || []),
           ...(productosEstacion || []).filter(p => {
             const categoriaLower = (p?.categoria || '').toLowerCase();
@@ -629,7 +629,7 @@ const Dashboard = () => {
           })
         ].filter(p => p && p.nombre && p.total_vendido > 0)
           .sort((a, b) => (b.total_vendido || 0) - (a.total_vendido || 0))
-          .slice(0, 12); // Top 12 productos más vendidos
+    .slice(0, 12); // Top 12 productos más vendidos
         break;
     }
     
@@ -657,10 +657,10 @@ const Dashboard = () => {
       case 'todas':
       default:
         return [
-          '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
-          '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
-          '#EC7063', '#5DADE2'
-        ];
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
+    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
+    '#EC7063', '#5DADE2'
+  ];
     }
   };
 
@@ -715,7 +715,7 @@ const Dashboard = () => {
       
       return {
         labels,
-        datasets: [{
+    datasets: [{
           label: tipo === 'cantidad' ? 'Unidades vendidas' : 'Ventas (CLP)',
           data,
           backgroundColor: coloresDisponibles,
@@ -837,8 +837,8 @@ const Dashboard = () => {
             data: dataMes1,
             backgroundColor: 'rgba(54, 162, 235, 0.6)',
             borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 2
-          }]
+      borderWidth: 2
+    }]
         };
 
         const datos2 = {
@@ -1838,7 +1838,7 @@ const Dashboard = () => {
                   )}
 
                   {/* Gráfico Único: Productos Más Vendidos con Filtro de Categoría */}
-                  <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', gridColumn: 'span 2' }}>
+                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', gridColumn: 'span 2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
                       <h4 style={{ margin: 0, color: '#1976d2', fontSize: '1.1rem' }}>
                         {categoriaFiltroGrafico === 'todas' ? '🏆 Top Productos Más Vendidos (Todas las Categorías)' : 
@@ -1925,8 +1925,8 @@ const Dashboard = () => {
                             ? 'No se encontraron empanadas vendidas en el período seleccionado según las predicciones de Machine Learning.'
                             : `No se encontraron productos de ${categoriaFiltroGrafico} vendidos en el período seleccionado.`}
                         </p>
-                      </div>
-                    )}
+                    </div>
+                  )}
                   </div>
                 </div>
               </div>
@@ -1949,8 +1949,8 @@ const Dashboard = () => {
             >
               Recargar Predicciones
             </button>
-          </div>
-        )}
+                    </div>
+                  )}
 
         {/* Gráfico Comparativo de Dos Meses - Separado y abajo de Top Productos, ocupando todo el ancho */}
         <div style={{ marginTop: '2rem', width: '100%', clear: 'both' }}>
@@ -1980,7 +1980,7 @@ const Dashboard = () => {
                     <option value="cantidad">Cantidad Vendida</option>
                     <option value="ventas">Ventas (Ingresos)</option>
                   </select>
-                </div>
+                    </div>
               </div>
             </div>
 
@@ -2002,8 +2002,8 @@ const Dashboard = () => {
                     backgroundColor: 'white',
                     cursor: 'pointer'
                   }}
-                />
-              </div>
+                      />
+                    </div>
               <div>
                 <label htmlFor="mes-comparacion-2-dashboard" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666' }}>
                   Mes 2:
@@ -2021,10 +2021,10 @@ const Dashboard = () => {
                     backgroundColor: 'white',
                     cursor: 'pointer'
                   }}
-                />
-              </div>
+                      />
+                    </div>
             </div>
-            
+
             {cargandoComparacion ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando comparación...</div>
             ) : (datosGraficoComparacionMes1 && datosGraficoComparacionMes2) ? (
@@ -2039,18 +2039,18 @@ const Dashboard = () => {
                         datosGraficoComparacionMes2.datasets?.[0] || {}
                       ]
                     }}
-                    options={{
-                      responsive: true,
+                        options={{
+                          responsive: true,
                       maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
+                          plugins: {
+                            legend: {
                           display: true,
                           position: 'top',
-                          labels: {
+                              labels: {
                             padding: 15,
                             usePointStyle: true,
                             font: { size: 12, weight: 'bold' }
-                          }
+                            }
                         },
                         tooltip: {
                           callbacks: {
@@ -2098,22 +2098,22 @@ const Dashboard = () => {
                             maxRotation: 45,
                             minRotation: 45,
                             font: { size: 10 }
+                              }
+                            }
                           }
-                        }
-                      }
-                    }}
-                  />
+                        }}
+                      />
+                    </div>
                 </div>
-              </div>
             ) : mesComparacion1 && mesComparacion2 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
                 No hay datos para comparar en estos meses
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
                 Selecciona dos meses para comparar
-              </div>
-            )}
+          </div>
+        )}
           </div>
         </div>
       </div>

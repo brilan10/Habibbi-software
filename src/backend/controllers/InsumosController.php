@@ -125,8 +125,9 @@ class InsumosController {
         $unidad = trim($input['unidad'] ?? '');
         $stock = floatval($input['stock'] ?? 0);
         $alerta_stock = floatval($input['alerta_stock'] ?? 5);
+        $proveedor = isset($input['proveedor']) ? trim($input['proveedor']) : null;
 
-        error_log("📝 CREAR INSUMO - Datos procesados: nombre={$nombre}, unidad={$unidad}, stock={$stock}, alerta_stock={$alerta_stock}");
+        error_log("📝 CREAR INSUMO - Datos procesados: nombre={$nombre}, unidad={$unidad}, stock={$stock}, alerta_stock={$alerta_stock}, proveedor={$proveedor}");
 
         if (empty($nombre)) {
             error_log("❌ CREAR INSUMO - Nombre vacío");
@@ -147,8 +148,13 @@ class InsumosController {
                 if (isset($insumoExistente['activo']) && $insumoExistente['activo'] == 0) {
                     error_log("🔄 CREAR INSUMO - Reactivando insumo inactivo");
                     $nuevoStock = floatval($insumoExistente['stock']) + floatval($stock);
-                    $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ?, activo = 1 WHERE id_insumo = ?";
-                    $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $insumoExistente['id_insumo']]);
+                    if ($proveedor !== null && $proveedor !== '') {
+                        $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ?, proveedor = ?, activo = 1 WHERE id_insumo = ?";
+                        $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $proveedor, $insumoExistente['id_insumo']]);
+                    } else {
+                        $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ?, activo = 1 WHERE id_insumo = ?";
+                        $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $insumoExistente['id_insumo']]);
+                    }
                     error_log("✅ CREAR INSUMO - Insumo reactivado y actualizado. Nuevo stock: {$nuevoStock}");
                     
                     $this->sendResponse(200, [
@@ -161,8 +167,13 @@ class InsumosController {
                 } else {
                     // Si existe y está activo, sumar el stock al existente
                     $nuevoStock = floatval($insumoExistente['stock']) + floatval($stock);
-                    $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ? WHERE id_insumo = ?";
-                    $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $insumoExistente['id_insumo']]);
+                    if ($proveedor !== null && $proveedor !== '') {
+                        $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ?, proveedor = ? WHERE id_insumo = ?";
+                        $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $proveedor, $insumoExistente['id_insumo']]);
+                    } else {
+                        $sqlUpdate = "UPDATE insumos SET stock = ?, alerta_stock = ? WHERE id_insumo = ?";
+                        $this->db->query($sqlUpdate, [$nuevoStock, $alerta_stock, $insumoExistente['id_insumo']]);
+                    }
                     error_log("✅ CREAR INSUMO - Insumo actualizado. Stock anterior: {$insumoExistente['stock']}, Stock nuevo: {$nuevoStock}");
                     
                     $this->sendResponse(200, [
@@ -176,11 +187,17 @@ class InsumosController {
             } else {
                 error_log("📝 CREAR INSUMO - No existe insumo con ese nombre y unidad, creando nuevo...");
                 // Si no existe, crear uno nuevo
-                $sql = "INSERT INTO insumos (nombre, unidad, stock, alerta_stock, activo) VALUES (?, ?, ?, ?, 1)";
-                error_log("📝 CREAR INSUMO - Ejecutando INSERT: {$sql}");
-                error_log("📝 CREAR INSUMO - Valores: nombre='{$nombre}', unidad='{$unidad}', stock={$stock}, alerta_stock={$alerta_stock}");
-                
-                $stmt = $this->db->query($sql, [$nombre, $unidad, $stock, $alerta_stock]);
+                if ($proveedor !== null && $proveedor !== '') {
+                    $sql = "INSERT INTO insumos (nombre, unidad, stock, alerta_stock, proveedor, activo) VALUES (?, ?, ?, ?, ?, 1)";
+                    error_log("📝 CREAR INSUMO - Ejecutando INSERT: {$sql}");
+                    error_log("📝 CREAR INSUMO - Valores: nombre='{$nombre}', unidad='{$unidad}', stock={$stock}, alerta_stock={$alerta_stock}, proveedor='{$proveedor}'");
+                    $stmt = $this->db->query($sql, [$nombre, $unidad, $stock, $alerta_stock, $proveedor]);
+                } else {
+                    $sql = "INSERT INTO insumos (nombre, unidad, stock, alerta_stock, activo) VALUES (?, ?, ?, ?, 1)";
+                    error_log("📝 CREAR INSUMO - Ejecutando INSERT: {$sql}");
+                    error_log("📝 CREAR INSUMO - Valores: nombre='{$nombre}', unidad='{$unidad}', stock={$stock}, alerta_stock={$alerta_stock}");
+                    $stmt = $this->db->query($sql, [$nombre, $unidad, $stock, $alerta_stock]);
+                }
                 $id = $this->db->lastInsertId();
                 
                 error_log("✅ CREAR INSUMO - Insumo creado exitosamente. ID: {$id}, Filas afectadas: " . $stmt->rowCount());
@@ -233,6 +250,7 @@ class InsumosController {
         $unidad = trim($input['unidad'] ?? null);
         $stock = isset($input['stock']) ? floatval($input['stock']) : null;
         $alerta_stock = isset($input['alerta_stock']) ? floatval($input['alerta_stock']) : null;
+        $proveedor = isset($input['proveedor']) ? trim($input['proveedor']) : null;
         
         // IMPORTANTE: Manejar activo de manera explícita (0 o 1 son valores válidos)
         // Usar isset() para verificar si el campo viene en el request
@@ -251,6 +269,7 @@ class InsumosController {
         if ($unidad !== null && $unidad !== '') { $fields[] = 'unidad = :unidad'; $params[':unidad'] = $unidad; }
         if ($stock !== null) { $fields[] = 'stock = :stock'; $params[':stock'] = $stock; }
         if ($alerta_stock !== null) { $fields[] = 'alerta_stock = :alerta_stock'; $params[':alerta_stock'] = $alerta_stock; }
+        if ($proveedor !== null && $proveedor !== '') { $fields[] = 'proveedor = :proveedor'; $params[':proveedor'] = $proveedor; }
         
         // IMPORTANTE: activo puede ser 0 o 1, ambos son valores válidos
         // Solo verificar si está definido en el input (no null)
@@ -266,11 +285,68 @@ class InsumosController {
         }
 
         try {
-            $sql = "UPDATE insumos SET " . implode(', ', $fields) . " WHERE id_insumo = :id";
-            error_log('PUT /api/insumos/' . $id . ' - SQL: ' . $sql);
-            error_log('PUT /api/insumos/' . $id . ' - Params: ' . json_encode($params));
-            
-            $this->db->query($sql, $params);
+            // Si se está actualizando el proveedor, actualizar TODOS los registros con el mismo nombre y unidad
+            // para mantener la consistencia en la vista consolidada
+            if (isset($proveedor) && array_key_exists('proveedor', $input)) {
+                // Obtener el nombre y unidad del insumo que se está actualizando
+                $sqlInfo = "SELECT nombre, unidad FROM insumos WHERE id_insumo = ?";
+                $infoInsumo = $this->db->fetch($sqlInfo, [$id]);
+                
+                if ($infoInsumo) {
+                    // Construir campos y parámetros usando placeholders posicionales (?)
+                    $fieldsConsolidados = [];
+                    $paramsConsolidados = [];
+                    
+                    // Procesar cada campo excepto proveedor
+                    foreach ($fields as $field) {
+                        if (strpos($field, 'proveedor') === false) {
+                            // Convertir placeholders con nombre a posicionales
+                            $fieldPosicional = preg_replace('/:(\w+)/', '?', $field);
+                            $fieldsConsolidados[] = $fieldPosicional;
+                            
+                            // Extraer el valor del parámetro
+                            preg_match('/:(\w+)/', $field, $matches);
+                            if (!empty($matches[1]) && isset($params[':' . $matches[1]])) {
+                                $paramsConsolidados[] = $params[':' . $matches[1]];
+                            }
+                        }
+                    }
+                    
+                    // Agregar el proveedor
+                    if ($proveedor !== null && $proveedor !== '') {
+                        $fieldsConsolidados[] = 'proveedor = ?';
+                        $paramsConsolidados[] = $proveedor;
+                    } else {
+                        $fieldsConsolidados[] = 'proveedor = NULL';
+                    }
+                    
+                    // Agregar nombre y unidad al final para el WHERE
+                    $paramsConsolidados[] = $infoInsumo['nombre'];
+                    $paramsConsolidados[] = $infoInsumo['unidad'];
+                    
+                    if (!empty($fieldsConsolidados)) {
+                        $sqlConsolidado = "UPDATE insumos SET " . implode(', ', $fieldsConsolidados) . " WHERE nombre = ? AND unidad = ? AND activo = 1";
+                        
+                        error_log('PUT /api/insumos/' . $id . ' - Actualizando TODOS los registros consolidados');
+                        error_log('PUT /api/insumos/' . $id . ' - SQL consolidado: ' . $sqlConsolidado);
+                        error_log('PUT /api/insumos/' . $id . ' - Params consolidados: ' . json_encode($paramsConsolidados));
+                        
+                        $this->db->query($sqlConsolidado, $paramsConsolidados);
+                    }
+                } else {
+                    // Si no se encuentra el insumo, hacer update normal por ID
+                    $sql = "UPDATE insumos SET " . implode(', ', $fields) . " WHERE id_insumo = :id";
+                    error_log('PUT /api/insumos/' . $id . ' - SQL: ' . $sql);
+                    error_log('PUT /api/insumos/' . $id . ' - Params: ' . json_encode($params));
+                    $this->db->query($sql, $params);
+                }
+            } else {
+                // Si no se está actualizando el proveedor, actualizar solo el registro específico
+                $sql = "UPDATE insumos SET " . implode(', ', $fields) . " WHERE id_insumo = :id";
+                error_log('PUT /api/insumos/' . $id . ' - SQL: ' . $sql);
+                error_log('PUT /api/insumos/' . $id . ' - Params: ' . json_encode($params));
+                $this->db->query($sql, $params);
+            }
             
             // Verificar que se actualizó correctamente
             $sqlVerificar = "SELECT id_insumo, nombre, activo FROM insumos WHERE id_insumo = ?";

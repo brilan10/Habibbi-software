@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { deleteInsumo, getInsumos, createInsumo, updateInsumo } from '../config/axiosConfig';
 import API_CONFIG from '../config/apiConfig';
 import { useNotification } from '../hooks/useNotification';
@@ -19,6 +20,9 @@ const GestionInsumos = () => {
   // Estado para los insumos inactivos
   const [insumosInactivos, setInsumosInactivos] = useState([]);
   
+  // Estado para la lista de proveedores
+  const [listaProveedores, setListaProveedores] = useState([]);
+  
   // Estado para el formulario de nuevo insumo
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   
@@ -31,13 +35,35 @@ const GestionInsumos = () => {
   const [capacidadVaso, setCapacidadVaso] = useState(0);
   const [cantidadVasos, setCantidadVasos] = useState('');
 
-  // Cargar insumos al montar el componente - FORZAR RECARGA LIMPIA
+  // Función para cargar proveedores desde el backend
+  const cargarProveedores = async () => {
+    try {
+      const timestamp = new Date().getTime();
+      const response = await axios.get(
+        API_CONFIG.BASE_URL + '/api/proveedores' + `?_t=${timestamp}`
+      );
+      
+      if (response.data && response.data.success) {
+        setListaProveedores(response.data.data || []);
+        console.log('✅ Proveedores cargados:', response.data.data.length);
+      } else {
+        console.error('❌ Respuesta del servidor sin éxito:', response.data);
+        setListaProveedores([]);
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar proveedores:', error);
+      setListaProveedores([]);
+    }
+  };
+
+  // Cargar insumos y proveedores al montar el componente - FORZAR RECARGA LIMPIA
   useEffect(() => {
     console.log('🚀 Componente GestionInsumos montado - Cargando datos desde BD');
     // Limpiar estado antes de cargar
     setListaInsumos([]);
     setInsumosInactivos([]);
     cargarInsumos();
+    cargarProveedores();
   }, []);
 
   // Estado de carga
@@ -484,7 +510,8 @@ const GestionInsumos = () => {
           nombre: datosInsumo.nombre,
           unidad: datosInsumo.unidad,
           stock: datosInsumo.cantidad,
-          alerta_stock: datosInsumo.stockMinimo
+          alerta_stock: datosInsumo.stockMinimo,
+          proveedor: datosInsumo.proveedor
         });
         
         console.log('📤 Respuesta del backend:', response.data);
@@ -502,7 +529,8 @@ const GestionInsumos = () => {
           nombre: datosInsumo.nombre,
           unidad: datosInsumo.unidad,
           stock: datosInsumo.cantidad,
-          alerta_stock: datosInsumo.stockMinimo
+          alerta_stock: datosInsumo.stockMinimo,
+          proveedor: datosInsumo.proveedor
         });
         if (response.data && response.data.success) {
           // Mostrar mensaje específico según si se sumó o se creó nuevo
@@ -1111,16 +1139,26 @@ const GestionInsumos = () => {
                 
                 <div className="form-group">
                   <label htmlFor="proveedor">Proveedor *</label>
-                  <input
-                    type="text"
+                  <select
                     id="proveedor"
                     name="proveedor"
                     value={formData.proveedor}
                     onChange={manejarCambioInput}
                     className="form-control"
-                    placeholder="Nombre del proveedor"
                     required
-                  />
+                  >
+                    <option value="">Selecciona un proveedor</option>
+                    {listaProveedores.map((proveedor) => (
+                      <option key={proveedor.id_proveedor} value={proveedor.nombre}>
+                        {proveedor.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {listaProveedores.length === 0 && (
+                    <small className="form-help" style={{ color: '#ff9800' }}>
+                      ⚠️ No hay proveedores registrados. Ve a "Proveedores" para agregar uno.
+                    </small>
+                  )}
                 </div>
               </div>
 

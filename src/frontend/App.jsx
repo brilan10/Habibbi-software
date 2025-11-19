@@ -27,6 +27,7 @@ import GestionRecetas from './views/GestionRecetas';   // Gestión de recetas
 import GestionInsumos from './views/GestionInsumos';   // Gestión de insumos
 import GestionUsuarios from './views/GestionUsuarios'; // Gestión de usuarios
 import GestionClientes from './views/GestionClientes'; // Gestión de clientes
+import GestionProveedores from './views/GestionProveedores'; // Gestión de proveedores
 import Reportes from './views/Reportes';              // Reportes y estadísticas
 import ControlCaja from './views/ControlCaja';        // Control de caja
 
@@ -223,6 +224,10 @@ const App = () => {
       case 'usuarios':
         // Vista de gestión de usuarios del sistema
         return <GestionUsuarios />;
+        
+      case 'proveedores':
+        // Vista de gestión de proveedores de insumos
+        return <GestionProveedores />;
         
       case 'reportes':
         // Vista de reportes y estadísticas
