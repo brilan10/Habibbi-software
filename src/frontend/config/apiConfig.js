@@ -3,28 +3,49 @@
  * 
  * Este archivo contiene todas las URLs del backend API
  * para que el frontend pueda conectarse correctamente
+ * 
+ * FUNCIONALIDADES:
+ * - Detecta automáticamente si está en desarrollo local o producción
+ * - Define todas las URLs de los endpoints del API
+ * - Proporciona funciones auxiliares para construir URLs
+ * - Configura headers y timeouts por defecto
  */
 
 // =====================================================
 // CONFIGURACIÓN DE URLS DEL BACKEND
 // =====================================================
 
-// Detectar si estamos en desarrollo local
+// Detectar si estamos en desarrollo local o producción
+// Compara el hostname de la URL actual con localhost o 127.0.0.1
+// Si coincide, estamos en desarrollo local (XAMPP)
+// Si no coincide, estamos en producción (servidor en línea)
+// window.location.hostname obtiene el dominio de la URL actual (ej: "localhost" o "habibbi.cl")
 const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+// Objeto de configuración principal que contiene todas las URLs del API
+// Se exporta para que otros archivos puedan importarlo y usar las URLs
 const API_CONFIG = {
-    // URL base del backend
-    // En desarrollo local: usa XAMPP local
-    // En producción: usa el servidor de producción
+    // URL base del backend - punto de entrada para todas las peticiones API
+    // Se selecciona automáticamente según el entorno (desarrollo o producción)
+    // 
+    // OPERADOR TERNARIO: condición ? valor_si_verdadero : valor_si_falso
+    // Si isLocalDevelopment es true, usa la URL local
+    // Si isLocalDevelopment es false, usa la URL de producción
     BASE_URL: isLocalDevelopment 
-        ? 'http://localhost/habibbi-backend'  // XAMPP local
-        : 'https://habibbi.cl/habibbi-backend',
+        ? 'http://localhost/habibbi-backend'        // URL para desarrollo local (XAMPP)
+                                                    // http://localhost es el servidor local
+                                                    // /habibbi-backend es la ruta donde está el backend
+        : 'https://habibbi.cl/habibbi-backend',     // URL para producción (servidor en línea)
+                                                    // https://habibbi.cl es el dominio del servidor
+                                                    // /habibbi-backend es la ruta donde está el backend
     
-    // Endpoints de autenticación
+    // Endpoints de autenticación - rutas para login, verificación y logout
+    // Estas rutas se concatenan con BASE_URL para formar la URL completa
+    // Ejemplo: BASE_URL + AUTH.LOGIN = 'http://localhost/habibbi-backend/api/auth/login'
     AUTH: {
-        LOGIN: '/api/auth/login',
-        VERIFY: '/api/auth/verify',
-        LOGOUT: '/api/auth/logout'
+        LOGIN: '/api/auth/login',      // Endpoint para iniciar sesión (POST con correo y contraseña)
+        VERIFY: '/api/auth/verify',     // Endpoint para verificar si el token es válido (GET)
+        LOGOUT: '/api/auth/logout'     // Endpoint para cerrar sesión (POST)
     },
     
     // Endpoints de usuarios
@@ -132,16 +153,31 @@ const API_CONFIG = {
 // =====================================================
 
 /**
- * Construye una URL completa del API
- * @param {string} endpoint - Endpoint del API
- * @param {string|number} id - ID opcional para endpoints específicos
- * @returns {string} URL completa
+ * Construye una URL completa del API concatenando BASE_URL con el endpoint
+ * 
+ * Esta función ayuda a construir URLs de forma consistente en toda la aplicación
+ * 
+ * EJEMPLO DE USO:
+ * buildApiUrl(API_CONFIG.USUARIOS.GET, 5)
+ * // Retorna: 'http://localhost/habibbi-backend/api/usuarios/5'
+ * 
+ * @param {string} endpoint - Endpoint del API (ej: '/api/usuarios')
+ * @param {string|number} id - ID opcional para endpoints específicos (ej: 5 para obtener usuario con ID 5)
+ * @returns {string} URL completa lista para usar en peticiones HTTP
  */
 export const buildApiUrl = (endpoint, id = null) => {
+    // Inicia con la URL base y concatena el endpoint
+    // Ejemplo: 'http://localhost/habibbi-backend' + '/api/usuarios' = 'http://localhost/habibbi-backend/api/usuarios'
     let url = API_CONFIG.BASE_URL + endpoint;
+    
+    // Si se proporciona un ID, lo agrega al final de la URL
+    // Ejemplo: si id = 5, la URL se convierte en '.../api/usuarios/5'
+    // Template literals (backticks) permiten interpolar variables con ${}
     if (id) {
         url += `/${id}`;
     }
+    
+    // Retorna la URL completa construida
     return url;
 };
 
