@@ -76,6 +76,22 @@ CREATE TABLE IF NOT EXISTS `productos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================
+-- TABLA: proveedores
+-- ================================================
+CREATE TABLE IF NOT EXISTS `proveedores` (
+  `id_proveedor` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(150) NOT NULL,
+  `telefono` varchar(50) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `direccion` varchar(200) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0=eliminado, 1=activo',
+  `creado_en` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_proveedor`),
+  KEY `idx_activo` (`activo`),
+  KEY `idx_nombre` (`nombre`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================
 -- TABLA: insumos
 -- ================================================
 CREATE TABLE IF NOT EXISTS `insumos` (
@@ -84,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `insumos` (
   `unidad` varchar(20) NOT NULL COMMENT 'kg, litros, unidades, etc.',
   `stock` decimal(10,2) NOT NULL DEFAULT 0.00,
   `alerta_stock` decimal(10,2) DEFAULT NULL COMMENT 'Nivel mínimo de stock para alertas',
-  `proveedor` varchar(150) DEFAULT NULL,
+  `proveedor` varchar(150) DEFAULT NULL COMMENT 'Nombre del proveedor (puede ser referencia a tabla proveedores)',
   `activo` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0=eliminado, 1=activo',
   `fecha_actualizacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_insumo`),
