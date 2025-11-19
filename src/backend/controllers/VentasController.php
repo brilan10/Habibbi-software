@@ -239,12 +239,6 @@ class VentasController {
                         $sqlDescontarInsumo = "UPDATE insumos SET stock = stock - ? WHERE id_insumo = ?";
                         $this->db->query($sqlDescontarInsumo, [$cantidadNecesaria, $id_insumo]);
                         error_log("📝 CREAR VENTA - Stock de insumo {$id_insumo} descontado en {$cantidadNecesaria}");
-                        
-                        // Registrar movimiento en stock_insumos
-                        $sqlMovimiento = "INSERT INTO stock_insumos (id_insumo, cantidad, tipo_movimiento, origen) 
-                                         VALUES (?, ?, 'salida', 'venta')";
-                        $this->db->query($sqlMovimiento, [$id_insumo, -$cantidadNecesaria]);
-                        error_log("📝 CREAR VENTA - Movimiento de stock para insumo {$id_insumo} registrado");
                     }
                 }
             }

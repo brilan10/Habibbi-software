@@ -161,23 +161,6 @@ CREATE TABLE IF NOT EXISTS `detalle_venta` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ================================================
--- TABLA: stock_insumos
--- ================================================
-CREATE TABLE IF NOT EXISTS `stock_insumos` (
-  `id_stock` int(11) NOT NULL AUTO_INCREMENT,
-  `id_insumo` int(11) NOT NULL,
-  `cantidad` decimal(10,2) NOT NULL COMMENT 'Cantidad positiva o negativa según tipo_movimiento',
-  `tipo_movimiento` enum('entrada','salida') NOT NULL,
-  `origen` varchar(50) DEFAULT NULL COMMENT 'venta, compra, ajuste, etc.',
-  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_stock`),
-  KEY `idx_id_insumo` (`id_insumo`),
-  KEY `idx_fecha` (`fecha`),
-  KEY `idx_tipo_movimiento` (`tipo_movimiento`),
-  CONSTRAINT `fk_stock_insumos_insumo` FOREIGN KEY (`id_insumo`) REFERENCES `insumos` (`id_insumo`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ================================================
 -- TABLA: caja
 -- ================================================
 CREATE TABLE IF NOT EXISTS `caja` (

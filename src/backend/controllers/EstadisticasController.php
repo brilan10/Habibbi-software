@@ -306,14 +306,8 @@ class EstadisticasController {
                              FROM insumos";
             $stockTotal = $this->db->fetch($sqlStockTotal);
             
-            // Movimientos recientes (últimos 30 días)
-            $sqlMovimientos = "SELECT si.cantidad, si.tipo_movimiento, si.origen, si.fecha, i.nombre as insumo 
-                             FROM stock_insumos si 
-                             INNER JOIN insumos i ON si.id_insumo = i.id_insumo 
-                             WHERE si.fecha >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) 
-                             ORDER BY si.fecha DESC 
-                             LIMIT 50";
-            $movimientos = $this->db->fetchAll($sqlMovimientos);
+            // Movimientos recientes - No disponible (tabla stock_insumos eliminada)
+            $movimientos = [];
             
             $this->sendResponse(200, [
                 'success' => true,
