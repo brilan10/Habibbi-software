@@ -247,10 +247,6 @@ apiClient.interceptors.response.use(
 // FUNCIONES AUXILIARES PARA DIFERENTES TIPOS DE REQUEST
 // =====================================================
 
-// =====================================================
-// FUNCIONES AUXILIARES PARA DIFERENTES TIPOS DE REQUEST
-// =====================================================
-
 /**
  * Realiza una petición GET
  * 
