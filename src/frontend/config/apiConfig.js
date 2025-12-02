@@ -32,9 +32,9 @@ const API_CONFIG = {
     // Si isLocalDevelopment es true, usa la URL local
     // Si isLocalDevelopment es false, usa la URL de producción
     BASE_URL: isLocalDevelopment 
-        ? 'http://localhost/habibbi-backend'        // URL para desarrollo local (XAMPP)
+        ? 'http://localhost/habibbi-api'            // URL para desarrollo local (XAMPP)
                                                     // http://localhost es el servidor local
-                                                    // /habibbi-backend es la ruta donde está el backend
+                                                    // /habibbi-api es la ruta donde está el backend
         : 'https://habibbi.cl/habibbi-backend',     // URL para producción (servidor en línea)
                                                     // https://habibbi.cl es el dominio del servidor
                                                     // /habibbi-backend es la ruta donde está el backend

@@ -1248,21 +1248,7 @@ const GestionInsumos = () => {
                   {/* Etiqueta del campo */}
                   <label htmlFor="proveedor">Proveedor *</label>
                   
-                  /**
-                   * Select (dropdown) para seleccionar el proveedor
-                   * 
-                   * Se usa un <select> en lugar de un <input> porque:
-                   * - Permite seleccionar de una lista predefinida de proveedores
-                   * - Evita errores de escritura (typos)
-                   * - Mejora la experiencia del usuario
-                   * 
-                   * value={formData.proveedor} hace que el select sea controlado
-                   * (su valor viene del estado formData)
-                   * 
-                   * onChange={manejarCambioInput} actualiza el estado cuando el usuario selecciona una opción
-                   * 
-                   * required hace que el campo sea obligatorio (validación HTML5)
-                   */
+                  {/* Select (dropdown) para seleccionar el proveedor */}
                   <select
                     id="proveedor"                              // ID para asociar con el label
                     name="proveedor"                            // Nombre del campo (se usa en manejarCambioInput)
@@ -1274,19 +1260,7 @@ const GestionInsumos = () => {
                     {/* Opción por defecto (vacía) */}
                     <option value="">Selecciona un proveedor</option>
                     
-                    /**
-                     * Mapear cada proveedor a una opción del select
-                     * 
-                     * listaProveedores.map() itera sobre el array de proveedores
-                     * y crea una opción <option> por cada proveedor
-                     * 
-                     * key={proveedor.id_proveedor} es requerido por React para identificar cada elemento
-                     * 
-                     * value={proveedor.nombre} es el valor que se enviará al backend
-                     * Se usa el nombre (no el ID) porque la tabla insumos almacena el nombre del proveedor
-                     * 
-                     * {proveedor.nombre} es el texto visible en el dropdown
-                     */
+                    {/* Mapear cada proveedor a una opción del select */}
                     {listaProveedores.map((proveedor) => (
                       <option key={proveedor.id_proveedor} value={proveedor.nombre}>
                         {proveedor.nombre}
@@ -1294,12 +1268,7 @@ const GestionInsumos = () => {
                     ))}
                   </select>
                   
-                  /**
-                   * Mensaje de advertencia si no hay proveedores registrados
-                   * 
-                   * Se muestra solo si listaProveedores.length === 0
-                   * Indica al usuario que debe crear proveedores primero
-                   */
+                  {/* Mensaje de advertencia si no hay proveedores registrados */}
                   {listaProveedores.length === 0 && (
                     <small className="form-help" style={{ color: '#ff9800' }}>
                       ⚠️ No hay proveedores registrados. Ve a "Proveedores" para agregar uno.

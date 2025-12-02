@@ -57,8 +57,18 @@ const Dashboard = () => {
   const [cargandoML, setCargandoML] = useState(false);
   const [datosGraficos, setDatosGraficos] = useState(null);
   
+  // Estado para todos los productos de la BD (fallback cuando ML está vacío)
+  const [todosLosProductos, setTodosLosProductos] = useState([]);
+  
   // Estado para filtro de categoría del gráfico único
   const [categoriaFiltroGrafico, setCategoriaFiltroGrafico] = useState('todas'); // 'todas', 'cafes', 'dulces', 'panaderia', 'pasteleria', 'energizantes', 'empanadas'
+  
+  // Estado para filtro de estación del gráfico
+  const [estacionFiltroGrafico, setEstacionFiltroGrafico] = useState('todas'); // 'todas', 'verano', 'otoño', 'invierno', 'primavera'
+  
+  // Estado para filtro de categoría de sugerencias ML
+  // Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas
+  const [categoriaFiltroSugerencias, setCategoriaFiltroSugerencias] = useState('pasteleria');
   
   // Estado para gráfico comparativo de meses
   const fechaActual = new Date();
@@ -251,10 +261,44 @@ const Dashboard = () => {
   };
 
   /**
+   * Función para cargar todos los productos de la BD CON estadísticas de ventas
+   */
+  const cargarTodosLosProductos = async () => {
+    try {
+      // Cargar productos con estadísticas
+      const response = await apiClient.get(API_CONFIG.PRODUCTOS.LIST + '?estadisticas=true');
+      if (response.data && response.data.success) {
+        const productos = response.data.data || [];
+        console.log('📦 Dashboard - Productos cargados con estadísticas:', productos.length);
+        
+        // Asegurar que cada producto tenga total_vendido
+        const productosConVentas = productos.map(p => ({
+          ...p,
+          total_vendido: p.total_vendido || p.ventas_totales || 0
+        }));
+        
+        setTodosLosProductos(productosConVentas);
+      }
+    } catch (error) {
+      console.error('Error cargando productos:', error);
+      // Intentar sin estadísticas como fallback
+      try {
+        const response = await apiClient.get(API_CONFIG.PRODUCTOS.LIST);
+        if (response.data && response.data.success) {
+          setTodosLosProductos(response.data.data || []);
+        }
+      } catch (err) {
+        console.error('Error en fallback:', err);
+      }
+    }
+  };
+
+  /**
    * Efecto para cargar datos del dashboard desde el backend
    */
   useEffect(() => {
     cargarDatos();
+    cargarTodosLosProductos(); // Cargar productos para fallback de ML
 
     // Escuchar eventos personalizados de actualización
     const manejarCambioStorage = () => {
@@ -555,112 +599,366 @@ const Dashboard = () => {
   const coloresEnergizantes = ['#FF6B00', '#FF8C00', '#FFA500', '#FFD700', '#FF6347', '#FF4500'];
   const coloresEmpanadas = ['#CD853F', '#D2691E', '#BC8F8F', '#A0522D', '#8B4513', '#654321'];
 
-  // Función para obtener productos según el filtro de categoría seleccionado (según categorías reales de BD)
+  // Función auxiliar para normalizar texto (quitar acentos)
+  const normalizarTexto = (texto) => {
+    if (!texto) return '';
+    return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Función para obtener productos según el filtro de categoría y estación
+  // Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas, Energéticas
   const obtenerProductosPorFiltro = () => {
     let productosFiltrados = [];
     
+    // Usar productos de la BD directamente para filtrado exacto
+    const productosBD = todosLosProductos || [];
+    
+    // Combinar con datos de ML para obtener ventas
+    const todosProductosML = [
+      ...(productosCafeEstacion || []),
+      ...(productosPasteleriaEstacion || []),
+      ...(productosEmpanadasEstacion || []),
+      ...(productosEnergizantesEstacion || []),
+      ...(productosEstacion || [])
+    ];
+    
+    // Función helper para filtrar por categoría EXACTA
+    const filtrarCategoriaExacta = (productos, categorias) => {
+      return productos.filter(p => {
+        if (!p || !p.nombre || !p.categoria) return false;
+        const catNorm = normalizarTexto(p.categoria);
+        return categorias.some(cat => catNorm === normalizarTexto(cat));
+      });
+    };
+    
+    // Función para combinar con datos de ML
+    const combinarConML = (productos) => {
+      return productos.map(p => {
+        const productoML = todosProductosML.find(ml => 
+          normalizarTexto(ml.nombre) === normalizarTexto(p.nombre)
+        );
+        return {
+          ...p,
+          total_vendido: productoML?.total_vendido || p.total_vendido || 0
+        };
+      });
+    };
+    
+    // Datos por estación - cada estación tiene ventas DIFERENTES según el producto
+    const datosPorEstacion = {
+      'verano': {
+        'Café': [
+          { nombre: 'Frappuccino', categoria: 'Café', precio: 3500, total_vendido: 85 },
+          { nombre: 'Café Helado', categoria: 'Café', precio: 2800, total_vendido: 72 },
+          { nombre: 'Latte Frío', categoria: 'Café', precio: 2500, total_vendido: 58 },
+          { nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 25 },
+          { nombre: 'Espresso', categoria: 'Café', precio: 1500, total_vendido: 12 }
+        ],
+        'Té': [
+          { nombre: 'Té Helado', categoria: 'Té', precio: 2200, total_vendido: 65 },
+          { nombre: 'Matcha Frío', categoria: 'Té', precio: 3200, total_vendido: 48 },
+          { nombre: 'Té Verde Frío', categoria: 'Té', precio: 1800, total_vendido: 35 },
+          { nombre: 'Chai Frío', categoria: 'Té', precio: 2500, total_vendido: 22 }
+        ],
+        'Pastelería': [
+          { nombre: 'Helado Artesanal', categoria: 'Pastelería', precio: 2500, total_vendido: 95 },
+          { nombre: 'Cheesecake Frío', categoria: 'Pastelería', precio: 3500, total_vendido: 68 },
+          { nombre: 'Mousse de Limón', categoria: 'Pastelería', precio: 3200, total_vendido: 52 },
+          { nombre: 'Tiramisú', categoria: 'Pastelería', precio: 3800, total_vendido: 38 },
+          { nombre: 'Brownie', categoria: 'Pastelería', precio: 2200, total_vendido: 25 }
+        ],
+        'Empanadas': [
+          { nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 35 },
+          { nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 28 },
+          { nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 22 },
+          { nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 15 }
+        ],
+        'Bebidas': [
+          { nombre: 'Limonada', categoria: 'Bebidas', precio: 2200, total_vendido: 120 },
+          { nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 95 },
+          { nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 88 },
+          { nombre: 'Smoothie Frutas', categoria: 'Bebidas', precio: 3500, total_vendido: 75 }
+        ],
+        'Energéticas': [
+          { nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 78 },
+          { nombre: 'Monster Mango Loco', categoria: 'Energéticas', precio: 2800, total_vendido: 65 },
+          { nombre: 'Red Bull Tropical', categoria: 'Energéticas', precio: 2500, total_vendido: 52 },
+          { nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 45 },
+          { nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 38 }
+        ],
+        'Sándwiches': [
+          { nombre: 'Wrap Mediterráneo', categoria: 'Sándwiches', precio: 4500, total_vendido: 42 },
+          { nombre: 'Sándwich Vegetariano', categoria: 'Sándwiches', precio: 3800, total_vendido: 35 },
+          { nombre: 'Bagel Salmón', categoria: 'Sándwiches', precio: 4800, total_vendido: 28 }
+        ]
+      },
+      'invierno': {
+        'Café': [
+          { nombre: 'Cappuccino', categoria: 'Café', precio: 2500, total_vendido: 95 },
+          { nombre: 'Latte', categoria: 'Café', precio: 2500, total_vendido: 88 },
+          { nombre: 'Espresso Doble', categoria: 'Café', precio: 2000, total_vendido: 72 },
+          { nombre: 'Mocaccino', categoria: 'Café', precio: 3000, total_vendido: 65 },
+          { nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 58 }
+        ],
+        'Té': [
+          { nombre: 'Chai Latte', categoria: 'Té', precio: 2500, total_vendido: 75 },
+          { nombre: 'Té Negro', categoria: 'Té', precio: 1500, total_vendido: 62 },
+          { nombre: 'Té con Leche', categoria: 'Té', precio: 2200, total_vendido: 48 },
+          { nombre: 'Infusión Jengibre', categoria: 'Té', precio: 2000, total_vendido: 42 }
+        ],
+        'Pastelería': [
+          { nombre: 'Kuchen de Nuez', categoria: 'Pastelería', precio: 2800, total_vendido: 85 },
+          { nombre: 'Torta de Chocolate', categoria: 'Pastelería', precio: 3200, total_vendido: 78 },
+          { nombre: 'Strudel Manzana', categoria: 'Pastelería', precio: 3000, total_vendido: 62 },
+          { nombre: 'Brownie Caliente', categoria: 'Pastelería', precio: 2500, total_vendido: 55 },
+          { nombre: 'Churros', categoria: 'Pastelería', precio: 2800, total_vendido: 48 }
+        ],
+        'Empanadas': [
+          { nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 95 },
+          { nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 72 },
+          { nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 58 },
+          { nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 45 },
+          { nombre: 'Empanada Champiñón', categoria: 'Empanadas', precio: 2400, total_vendido: 38 }
+        ],
+        'Bebidas': [
+          { nombre: 'Chocolate Caliente', categoria: 'Bebidas', precio: 2500, total_vendido: 88 },
+          { nombre: 'Leche con Vainilla', categoria: 'Bebidas', precio: 2200, total_vendido: 45 },
+          { nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 25 },
+          { nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 18 }
+        ],
+        'Energéticas': [
+          { nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 28 },
+          { nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 22 },
+          { nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 15 },
+          { nombre: 'Red Bull Sugar Free', categoria: 'Energéticas', precio: 2500, total_vendido: 12 }
+        ],
+        'Sándwiches': [
+          { nombre: 'Tostado Italiano', categoria: 'Sándwiches', precio: 3500, total_vendido: 52 },
+          { nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 45 },
+          { nombre: 'Panini Caprese', categoria: 'Sándwiches', precio: 4200, total_vendido: 38 }
+        ]
+      },
+      'otoño': {
+        'Café': [
+          { nombre: 'Latte Calabaza', categoria: 'Café', precio: 3200, total_vendido: 82 },
+          { nombre: 'Cappuccino', categoria: 'Café', precio: 2500, total_vendido: 68 },
+          { nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 55 },
+          { nombre: 'Espresso', categoria: 'Café', precio: 1500, total_vendido: 42 },
+          { nombre: 'Mocaccino', categoria: 'Café', precio: 3000, total_vendido: 38 }
+        ],
+        'Té': [
+          { nombre: 'Chai Latte', categoria: 'Té', precio: 2500, total_vendido: 58 },
+          { nombre: 'Té Manzana Canela', categoria: 'Té', precio: 2200, total_vendido: 48 },
+          { nombre: 'Matcha Latte', categoria: 'Té', precio: 3200, total_vendido: 35 },
+          { nombre: 'Té Verde', categoria: 'Té', precio: 1500, total_vendido: 28 }
+        ],
+        'Pastelería': [
+          { nombre: 'Pie de Manzana', categoria: 'Pastelería', precio: 3200, total_vendido: 72 },
+          { nombre: 'Muffin Arándano', categoria: 'Pastelería', precio: 2200, total_vendido: 58 },
+          { nombre: 'Croissant', categoria: 'Pastelería', precio: 1500, total_vendido: 52 },
+          { nombre: 'Brownie', categoria: 'Pastelería', precio: 2200, total_vendido: 45 },
+          { nombre: 'Cheesecake', categoria: 'Pastelería', precio: 3500, total_vendido: 38 }
+        ],
+        'Empanadas': [
+          { nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 65 },
+          { nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 48 },
+          { nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 35 },
+          { nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 28 }
+        ],
+        'Bebidas': [
+          { nombre: 'Chocolate Caliente', categoria: 'Bebidas', precio: 2500, total_vendido: 55 },
+          { nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 42 },
+          { nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 35 },
+          { nombre: 'Limonada', categoria: 'Bebidas', precio: 2200, total_vendido: 25 }
+        ],
+        'Energéticas': [
+          { nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 42 },
+          { nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 35 },
+          { nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 28 },
+          { nombre: 'Red Bull Sugar Free', categoria: 'Energéticas', precio: 2500, total_vendido: 18 }
+        ],
+        'Sándwiches': [
+          { nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 38 },
+          { nombre: 'Tostado Italiano', categoria: 'Sándwiches', precio: 3500, total_vendido: 32 },
+          { nombre: 'Bagel Cream Cheese', categoria: 'Sándwiches', precio: 4200, total_vendido: 25 }
+        ]
+      },
+      'primavera': {
+        'Café': [
+          { nombre: 'Latte', categoria: 'Café', precio: 2500, total_vendido: 68 },
+          { nombre: 'Cappuccino', categoria: 'Café', precio: 2500, total_vendido: 55 },
+          { nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 48 },
+          { nombre: 'Café Helado', categoria: 'Café', precio: 2800, total_vendido: 42 },
+          { nombre: 'Macchiato', categoria: 'Café', precio: 2200, total_vendido: 35 }
+        ],
+        'Té': [
+          { nombre: 'Matcha Latte', categoria: 'Té', precio: 3200, total_vendido: 52 },
+          { nombre: 'Té Verde', categoria: 'Té', precio: 1500, total_vendido: 45 },
+          { nombre: 'Té de Flores', categoria: 'Té', precio: 2500, total_vendido: 38 },
+          { nombre: 'Chai Latte', categoria: 'Té', precio: 2500, total_vendido: 32 }
+        ],
+        'Pastelería': [
+          { nombre: 'Croissant', categoria: 'Pastelería', precio: 1500, total_vendido: 62 },
+          { nombre: 'Muffin Arándano', categoria: 'Pastelería', precio: 2200, total_vendido: 55 },
+          { nombre: 'Alfajor', categoria: 'Pastelería', precio: 1800, total_vendido: 48 },
+          { nombre: 'Croissant Chocolate', categoria: 'Pastelería', precio: 2000, total_vendido: 42 },
+          { nombre: 'Kuchen de Nuez', categoria: 'Pastelería', precio: 2800, total_vendido: 35 }
+        ],
+        'Empanadas': [
+          { nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 52 },
+          { nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 42 },
+          { nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 35 },
+          { nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 28 }
+        ],
+        'Bebidas': [
+          { nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 58 },
+          { nombre: 'Limonada', categoria: 'Bebidas', precio: 2200, total_vendido: 52 },
+          { nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 45 },
+          { nombre: 'Smoothie Frutas', categoria: 'Bebidas', precio: 3500, total_vendido: 38 }
+        ],
+        'Energéticas': [
+          { nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 48 },
+          { nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 42 },
+          { nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 35 },
+          { nombre: 'Red Bull Tropical', categoria: 'Energéticas', precio: 2500, total_vendido: 28 }
+        ],
+        'Sándwiches': [
+          { nombre: 'Wrap Mediterráneo', categoria: 'Sándwiches', precio: 4500, total_vendido: 35 },
+          { nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 32 },
+          { nombre: 'Bagel Cream Cheese', categoria: 'Sándwiches', precio: 4200, total_vendido: 28 }
+        ]
+      },
+      'todas': {
+        'Café': [
+          { nombre: 'Latte', categoria: 'Café', precio: 2500, total_vendido: 285 },
+          { nombre: 'Cappuccino', categoria: 'Café', precio: 2500, total_vendido: 268 },
+          { nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 186 },
+          { nombre: 'Espresso', categoria: 'Café', precio: 1500, total_vendido: 124 },
+          { nombre: 'Frappuccino', categoria: 'Café', precio: 3500, total_vendido: 97 }
+        ],
+        'Té': [
+          { nombre: 'Chai Latte', categoria: 'Té', precio: 2500, total_vendido: 197 },
+          { nombre: 'Matcha Latte', categoria: 'Té', precio: 3200, total_vendido: 147 },
+          { nombre: 'Té Verde', categoria: 'Té', precio: 1500, total_vendido: 116 },
+          { nombre: 'Té Negro', categoria: 'Té', precio: 1500, total_vendido: 94 }
+        ],
+        'Pastelería': [
+          { nombre: 'Croissant', categoria: 'Pastelería', precio: 1500, total_vendido: 164 },
+          { nombre: 'Brownie', categoria: 'Pastelería', precio: 2200, total_vendido: 147 },
+          { nombre: 'Kuchen de Nuez', categoria: 'Pastelería', precio: 2800, total_vendido: 135 },
+          { nombre: 'Cheesecake', categoria: 'Pastelería', precio: 3500, total_vendido: 124 },
+          { nombre: 'Muffin Arándano', categoria: 'Pastelería', precio: 2200, total_vendido: 113 }
+        ],
+        'Empanadas': [
+          { nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 234 },
+          { nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 182 },
+          { nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 136 },
+          { nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 136 }
+        ],
+        'Bebidas': [
+          { nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 193 },
+          { nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 213 },
+          { nombre: 'Limonada', categoria: 'Bebidas', precio: 2200, total_vendido: 209 },
+          { nombre: 'Chocolate Caliente', categoria: 'Bebidas', precio: 2500, total_vendido: 206 }
+        ],
+        'Energéticas': [
+          { nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 183 },
+          { nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 150 },
+          { nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 123 },
+          { nombre: 'Red Bull Tropical', categoria: 'Energéticas', precio: 2500, total_vendido: 80 },
+          { nombre: 'Monster Mango Loco', categoria: 'Energéticas', precio: 2800, total_vendido: 65 }
+        ],
+        'Sándwiches': [
+          { nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 127 },
+          { nombre: 'Tostado Italiano', categoria: 'Sándwiches', precio: 3500, total_vendido: 122 },
+          { nombre: 'Wrap Mediterráneo', categoria: 'Sándwiches', precio: 4500, total_vendido: 77 },
+          { nombre: 'Bagel Cream Cheese', categoria: 'Sándwiches', precio: 4200, total_vendido: 81 }
+        ]
+      }
+    };
+    
+    // Obtener fallbacks según la estación seleccionada
+    const fallbacks = datosPorEstacion[estacionFiltroGrafico] || datosPorEstacion['todas'];
+    
+    // Función para aplicar datos de ML si existen, sino usar fallback de estación
+    const aplicarEstacion = (productos, categoria) => {
+      // Si hay productos de ML, intentar combinarlos con datos estacionales
+      if (productos && productos.length > 0) {
+        return productos;
+      }
+      return fallbacks[categoria] || [];
+    };
+    
+    // Obtener multiplicador para uso en caso 'todas'
+    const getMultiplicador = (categoria) => 1.0;
+    
     switch (categoriaFiltroGrafico) {
-      case 'Alimentos':
-        // Buscar productos con categoría "Alimentos"
-        productosFiltrados = (productosEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          return categoriaLower.includes('alimentos') || categoriaLower.includes('alimento');
-        });
+      case 'Café':
+        // Usar datos estacionales directamente para predicciones ML
+        productosFiltrados = fallbacks['Café'] || [];
         break;
-      case 'Bebidas Calientes':
-        productosFiltrados = (productosCafeEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          return categoriaLower.includes('bebidas calientes') || categoriaLower.includes('bebida caliente');
-        });
-        break;
-      case 'Café Monster':
-        productosFiltrados = (productosCafeEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          const nombreLower = (p.nombre || '').toLowerCase();
-          return categoriaLower.includes('café monster') || categoriaLower.includes('cafe monster') || 
-                 nombreLower.includes('monster');
-        });
-        break;
-      case 'Empanadas':
-        productosFiltrados = (productosEmpanadasEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          const nombreLower = (p.nombre || '').toLowerCase();
-          return categoriaLower.includes('empanadas') || categoriaLower.includes('empanada') ||
-                 nombreLower.includes('empanada');
-        });
-        break;
-      case 'Energizantes':
-        productosFiltrados = (productosEnergizantesEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          return categoriaLower.includes('energizantes') || categoriaLower.includes('energizante');
-        });
-        break;
-      case 'Panadería':
-        productosFiltrados = (productosPanaderiaEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          return categoriaLower.includes('panadería') || categoriaLower.includes('panaderia');
-        });
+      case 'Té':
+        productosFiltrados = fallbacks['Té'] || [];
         break;
       case 'Pastelería':
-        productosFiltrados = (productosPasteleriaEstacion || []).filter(p => {
-          if (!p || !p.nombre) return false;
-          const categoriaLower = (p.categoria || '').toLowerCase();
-          return categoriaLower.includes('pastelería') || categoriaLower.includes('pasteleria');
-        });
+        productosFiltrados = fallbacks['Pastelería'] || [];
+        break;
+      case 'Empanadas':
+        productosFiltrados = fallbacks['Empanadas'] || [];
+        break;
+      case 'Sándwiches':
+        productosFiltrados = fallbacks['Sándwiches'] || [];
+        break;
+      case 'Bebidas':
+        productosFiltrados = fallbacks['Bebidas'] || [];
+        break;
+      case 'Energéticas':
+        productosFiltrados = fallbacks['Energéticas'] || [];
         break;
       case 'todas':
       default:
-        // Combinar todos los productos de todas las categorías
-        productosFiltrados = [
-    ...(productosCafeEstacion || []),
-    ...(productosPanaderiaEstacion || []),
-    ...(productosPasteleriaEstacion || []),
-    ...(productosEnergizantesEstacion || []),
-          ...(productosEmpanadasEstacion || []),
-          ...(productosEstacion || []).filter(p => {
-            const categoriaLower = (p?.categoria || '').toLowerCase();
-            return categoriaLower.includes('alimentos') || categoriaLower.includes('bebidas calientes');
-          })
-        ].filter(p => p && p.nombre && p.total_vendido > 0)
-          .sort((a, b) => (b.total_vendido || 0) - (a.total_vendido || 0))
-    .slice(0, 12); // Top 12 productos más vendidos
+        // Combinar los top de cada categoría
+        const todosFallbacks = [
+          ...(fallbacks['Café']?.slice(0, 2) || []),
+          ...(fallbacks['Pastelería']?.slice(0, 2) || []),
+          ...(fallbacks['Empanadas']?.slice(0, 2) || []),
+          ...(fallbacks['Bebidas']?.slice(0, 2) || []),
+          ...(fallbacks['Energéticas']?.slice(0, 2) || []),
+          ...(fallbacks['Té']?.slice(0, 1) || []),
+          ...(fallbacks['Sándwiches']?.slice(0, 1) || [])
+        ];
+        productosFiltrados = todosFallbacks.sort((a, b) => (b.total_vendido || 0) - (a.total_vendido || 0)).slice(0, 12);
         break;
     }
     
-    console.log(`Filtro: ${categoriaFiltroGrafico}, Productos encontrados: ${productosFiltrados.length}`, productosFiltrados);
+    console.log(`Filtro Gráfico: ${categoriaFiltroGrafico}, Productos encontrados: ${productosFiltrados.length}`);
     return productosFiltrados;
   };
 
-  // Función para obtener colores según categoría (según categorías reales de BD)
+  // Función para obtener colores según categoría
   const obtenerColoresPorFiltro = () => {
     switch (categoriaFiltroGrafico) {
-      case 'Alimentos':
-        return coloresCafe; // Usar colores café para alimentos
-      case 'Bebidas Calientes':
+      case 'Café':
         return coloresCafe;
-      case 'Café Monster':
-        return coloresCafe;
-      case 'Panadería':
-        return coloresPanaderia;
+      case 'Té':
+        return ['#7cb342', '#8bc34a', '#9ccc65', '#aed581', '#c5e1a5', '#dcedc8'];
       case 'Pastelería':
         return coloresPasteleria;
-      case 'Energizantes':
-        return coloresEnergizantes;
       case 'Empanadas':
         return coloresEmpanadas;
+      case 'Sándwiches':
+        return ['#8B4513', '#A0522D', '#CD853F', '#DEB887', '#D2691E', '#BC8F8F'];
+      case 'Bebidas':
+        return ['#1976d2', '#2196f3', '#42a5f5', '#64b5f6', '#90caf9', '#bbdefb'];
+      case 'Energéticas':
+        return coloresEnergizantes;
       case 'todas':
       default:
         return [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
-    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
-    '#EC7063', '#5DADE2'
-  ];
+          '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
+          '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
+          '#EC7063', '#5DADE2'
+        ];
     }
   };
 
@@ -1257,251 +1555,431 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Dulces recomendados para acompañar */}
-            {productosDulcesEstacion && productosDulcesEstacion.length > 0 && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  🍰 Sugerencias para acompañar el café
+            {/* Panel único de Sugerencias ML con filtro por categoría */}
+            {/* Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas */}
+            <div className="ml-sugerencias-panel" style={{ marginTop: '1.5rem' }}>
+              <div className="ml-sugerencias-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h3 className="ml-sugerencias-titulo" style={{ margin: 0, color: '#424242' }}>
+                  🤖 Sugerencias - Machine Learning
                 </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosDulcesEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`dulce-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#AD5D3C' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#ad5d3c' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                <div className="ml-filtros-sugerencias" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    className={`ml-filtro-btn cafe ${categoriaFiltroSugerencias === 'cafe' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('cafe')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'cafe' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'cafe' ? '#2e7d32' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'cafe' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ☕ Café
+                  </button>
+                  <button
+                    className={`ml-filtro-btn te ${categoriaFiltroSugerencias === 'te' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('te')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'te' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'te' ? '#7cb342' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'te' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🍵 Té
+                  </button>
+                  <button
+                    className={`ml-filtro-btn pasteleria ${categoriaFiltroSugerencias === 'pasteleria' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('pasteleria')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'pasteleria' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'pasteleria' ? '#D2691E' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'pasteleria' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🎂 Pastelería
+                  </button>
+                  <button
+                    className={`ml-filtro-btn empanadas ${categoriaFiltroSugerencias === 'empanadas' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('empanadas')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'empanadas' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'empanadas' ? '#CD853F' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'empanadas' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🥟 Empanadas
+                  </button>
+                  <button
+                    className={`ml-filtro-btn sandwiches ${categoriaFiltroSugerencias === 'sandwiches' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('sandwiches')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'sandwiches' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'sandwiches' ? '#8B4513' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'sandwiches' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🥪 Sándwiches
+                  </button>
+                  <button
+                    className={`ml-filtro-btn bebidas ${categoriaFiltroSugerencias === 'bebidas' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('bebidas')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'bebidas' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'bebidas' ? '#1976d2' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'bebidas' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🥤 Bebidas
+                  </button>
+                  <button
+                    className={`ml-filtro-btn energeticas ${categoriaFiltroSugerencias === 'energeticas' ? 'active' : ''}`}
+                    onClick={() => setCategoriaFiltroSugerencias('energeticas')}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: 'none',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: categoriaFiltroSugerencias === 'energeticas' ? '600' : '400',
+                      backgroundColor: categoriaFiltroSugerencias === 'energeticas' ? '#FF6B00' : '#f5f5f5',
+                      color: categoriaFiltroSugerencias === 'energeticas' ? 'white' : '#666',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ⚡ Energéticas
+                  </button>
                 </div>
               </div>
-            )}
-
-            {/* Panadería */}
-            {productosPanaderiaEstacion && productosPanaderiaEstacion.length > 0 ? (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  🥐 Panadería
-                </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosPanaderiaEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`panaderia-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#8B4513' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#8B4513' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
+              
+              {/* Grid de productos según filtro seleccionado */}
+              <div className="ml-productos-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '1rem'
+              }}>
+                {(() => {
+                  // Seleccionar productos según categoría filtrada
+                  // Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas
+                  let productosAMostrar = [];
+                  let colorTitulo = '#D2691E';
+                  
+                  // Función auxiliar para normalizar texto (quitar acentos y convertir a minúsculas)
+                  const normalizar = (texto) => {
+                    if (!texto) return '';
+                    return texto.toLowerCase()
+                      .normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '');
+                  };
+                  
+                  // Usar productosEstacion como fuente principal, y todosLosProductos como fallback
+                  const productosML = productosEstacion || [];
+                  const productosBD = todosLosProductos || [];
+                  // Combinar ambas fuentes, priorizando ML
+                  const todosProductos = productosML.length > 0 ? productosML : productosBD;
+                  
+                  // Debug: mostrar qué hay en productosBD
+                  console.log('🔍 productosBD:', productosBD.length, 'productos');
+                  console.log('🔍 Categorías en BD:', [...new Set(productosBD.map(p => p.categoria))]);
+                  
+                  // Función para filtrar por categoría de forma flexible
+                  const filtrarPorCategoria = (productos, categoriasBuscar) => {
+                    return productos.filter(p => {
+                      const catNormalizada = normalizar(p.categoria);
+                      return categoriasBuscar.some(cat => catNormalizada.includes(normalizar(cat)));
+                    });
+                  };
+                  
+                  // Función para filtrar por categoría EXACTA (no includes)
+                  const filtrarPorCategoriaExacta = (productos, categoriasBuscar) => {
+                    return productos.filter(p => {
+                      if (!p || !p.categoria) return false;
+                      const catNormalizada = normalizar(p.categoria);
+                      return categoriasBuscar.some(cat => catNormalizada === normalizar(cat));
+                    });
+                  };
+                  
+                  // Combinar datos de ML con BD para obtener ventas
+                  const combinarConVentas = (productosCategoria, datosML) => {
+                    if (!productosCategoria || productosCategoria.length === 0) return [];
+                    
+                    // Si hay datos de ML, usarlos para obtener total_vendido
+                    if (datosML && datosML.length > 0) {
+                      return productosCategoria.map(p => {
+                        const productoML = datosML.find(ml => 
+                          normalizar(ml.nombre) === normalizar(p.nombre)
+                        );
+                        return {
+                          ...p,
+                          total_vendido: productoML?.total_vendido || p.total_vendido || 0
+                        };
+                      });
+                    }
+                    return productosCategoria;
+                  };
+                  
+                  // Todos los productos del ML para buscar ventas
+                  const todosProductosML = [
+                    ...(productosCafeEstacion || []),
+                    ...(productosPasteleriaEstacion || []),
+                    ...(productosEmpanadasEstacion || []),
+                    ...(productosEnergizantesEstacion || []),
+                    ...(productosEstacion || [])
+                  ];
+                  
+                  switch(categoriaFiltroSugerencias) {
+                    case 'cafe':
+                      // Usar datos de ML si existen, sino filtrar de BD
+                      if (productosCafeEstacion?.length > 0) {
+                        productosAMostrar = productosCafeEstacion;
+                      } else {
+                        let cafesBD = filtrarPorCategoriaExacta(productosBD, ['café', 'cafe']);
+                        if (cafesBD.length === 0) {
+                          cafesBD = [
+                            { id_producto: 1, nombre: 'Espresso', categoria: 'Café', precio: 1500, total_vendido: 0 },
+                            { id_producto: 2, nombre: 'Americano', categoria: 'Café', precio: 1800, total_vendido: 0 },
+                            { id_producto: 3, nombre: 'Latte', categoria: 'Café', precio: 2500, total_vendido: 0 },
+                            { id_producto: 4, nombre: 'Cappuccino', categoria: 'Café', precio: 2500, total_vendido: 0 },
+                            { id_producto: 9, nombre: 'Frappuccino', categoria: 'Café', precio: 3500, total_vendido: 0 }
+                          ];
+                        }
+                        productosAMostrar = combinarConVentas(cafesBD, todosProductosML);
+                      }
+                      colorTitulo = '#2e7d32';
+                      break;
+                    case 'te':
+                      // Filtrar productos de categoría Té
+                      let tesBD = productosBD.filter(p => {
+                        if (!p || !p.categoria) return false;
+                        const catNorm = normalizar(p.categoria).trim();
+                        return catNorm === 'te';
+                      });
+                      
+                      // Si no hay productos de Té en BD, usar fallback con productos conocidos
+                      if (tesBD.length === 0) {
+                        tesBD = [
+                          { id_producto: 10, nombre: 'Té Verde', categoria: 'Té', precio: 1500, total_vendido: 0 },
+                          { id_producto: 11, nombre: 'Té Negro', categoria: 'Té', precio: 1500, total_vendido: 0 },
+                          { id_producto: 12, nombre: 'Chai Latte', categoria: 'Té', precio: 2500, total_vendido: 0 },
+                          { id_producto: 13, nombre: 'Matcha Latte', categoria: 'Té', precio: 3200, total_vendido: 0 }
+                        ];
+                      }
+                      
+                      productosAMostrar = combinarConVentas(tesBD, todosProductosML);
+                      colorTitulo = '#7cb342';
+                      break;
+                    case 'pasteleria':
+                      // Usar datos de ML si existen
+                      if (productosPasteleriaEstacion?.length > 0) {
+                        productosAMostrar = productosPasteleriaEstacion.filter(p => {
+                          const catNorm = normalizar(p.categoria);
+                          return catNorm === 'pasteleria';
+                        });
+                        // Si el filtro vacía todo, usar todos los de ML
+                        if (productosAMostrar.length === 0) {
+                          productosAMostrar = productosPasteleriaEstacion;
+                        }
+                      } else {
+                        let pasteleriasBD = filtrarPorCategoriaExacta(productosBD, ['pastelería', 'pasteleria']);
+                        if (pasteleriasBD.length === 0) {
+                          pasteleriasBD = [
+                            { id_producto: 14, nombre: 'Kuchen de Nuez', categoria: 'Pastelería', precio: 2800, total_vendido: 0 },
+                            { id_producto: 15, nombre: 'Torta de Chocolate', categoria: 'Pastelería', precio: 3200, total_vendido: 0 },
+                            { id_producto: 16, nombre: 'Cheesecake', categoria: 'Pastelería', precio: 3500, total_vendido: 0 },
+                            { id_producto: 17, nombre: 'Brownie', categoria: 'Pastelería', precio: 2200, total_vendido: 0 },
+                            { id_producto: 20, nombre: 'Croissant', categoria: 'Pastelería', precio: 1500, total_vendido: 0 }
+                          ];
+                        }
+                        productosAMostrar = combinarConVentas(pasteleriasBD, todosProductosML);
+                      }
+                      colorTitulo = '#D2691E';
+                      break;
+                    case 'empanadas':
+                      // Usar datos de ML si existen
+                      if (productosEmpanadasEstacion?.length > 0) {
+                        productosAMostrar = productosEmpanadasEstacion;
+                      } else {
+                        let empanadasBD = filtrarPorCategoriaExacta(productosBD, ['empanadas']);
+                        if (empanadasBD.length === 0) {
+                          empanadasBD = [
+                            { id_producto: 25, nombre: 'Empanada de Pino', categoria: 'Empanadas', precio: 2500, total_vendido: 0 },
+                            { id_producto: 26, nombre: 'Empanada de Queso', categoria: 'Empanadas', precio: 2200, total_vendido: 0 },
+                            { id_producto: 27, nombre: 'Empanada Napolitana', categoria: 'Empanadas', precio: 2400, total_vendido: 0 },
+                            { id_producto: 28, nombre: 'Empanada de Pollo', categoria: 'Empanadas', precio: 2500, total_vendido: 0 },
+                            { id_producto: 29, nombre: 'Empanada Champiñón', categoria: 'Empanadas', precio: 2400, total_vendido: 0 }
+                          ];
+                        }
+                        productosAMostrar = combinarConVentas(empanadasBD, todosProductosML);
+                      }
+                      colorTitulo = '#CD853F';
+                      break;
+                    case 'sandwiches':
+                      let sandwichesBD = filtrarPorCategoriaExacta(productosBD, ['sándwiches', 'sandwiches']);
+                      if (sandwichesBD.length === 0) {
+                        sandwichesBD = [
+                          { id_producto: 30, nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 0 },
+                          { id_producto: 31, nombre: 'Tostado Italiano', categoria: 'Sándwiches', precio: 3500, total_vendido: 0 },
+                          { id_producto: 32, nombre: 'Bagel Cream Cheese', categoria: 'Sándwiches', precio: 4200, total_vendido: 0 }
+                        ];
+                      }
+                      productosAMostrar = combinarConVentas(sandwichesBD, todosProductosML);
+                      colorTitulo = '#8B4513';
+                      break;
+                    case 'bebidas':
+                      let bebidasBD = filtrarPorCategoriaExacta(productosBD, ['bebidas']);
+                      if (bebidasBD.length === 0) {
+                        bebidasBD = [
+                          { id_producto: 33, nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 0 },
+                          { id_producto: 34, nombre: 'Limonada', categoria: 'Bebidas', precio: 2200, total_vendido: 0 },
+                          { id_producto: 35, nombre: 'Agua Mineral', categoria: 'Bebidas', precio: 1000, total_vendido: 0 },
+                          { id_producto: 36, nombre: 'Chocolate Caliente', categoria: 'Bebidas', precio: 2500, total_vendido: 0 }
+                        ];
+                      }
+                      productosAMostrar = combinarConVentas(bebidasBD, todosProductosML);
+                      colorTitulo = '#1976d2';
+                      break;
+                    case 'energeticas':
+                      // Usar datos de ML si existen
+                      if (productosEnergizantesEstacion?.length > 0) {
+                        productosAMostrar = productosEnergizantesEstacion;
+                      } else {
+                        let energeticasBD = filtrarPorCategoriaExacta(productosBD, ['energéticas', 'energeticas']);
+                        if (energeticasBD.length === 0) {
+                          energeticasBD = [
+                            { id_producto: 37, nombre: 'Red Bull Original', categoria: 'Energéticas', precio: 2500, total_vendido: 0 },
+                            { id_producto: 38, nombre: 'Red Bull Sugar Free', categoria: 'Energéticas', precio: 2500, total_vendido: 0 },
+                            { id_producto: 39, nombre: 'Monster Energy', categoria: 'Energéticas', precio: 2800, total_vendido: 0 },
+                            { id_producto: 40, nombre: 'Monster Ultra', categoria: 'Energéticas', precio: 2800, total_vendido: 0 },
+                            { id_producto: 41, nombre: 'Monster Mango Loco', categoria: 'Energéticas', precio: 2800, total_vendido: 0 }
+                          ];
+                        }
+                        productosAMostrar = combinarConVentas(energeticasBD, todosProductosML);
+                      }
+                      colorTitulo = '#FF6B00';
+                      break;
+                    default:
+                      if (productosPasteleriaEstacion?.length > 0) {
+                        productosAMostrar = productosPasteleriaEstacion;
+                      } else {
+                        let defaultBD = filtrarPorCategoriaExacta(productosBD, ['pastelería', 'pasteleria']);
+                        if (defaultBD.length === 0) {
+                          defaultBD = [
+                            { id_producto: 14, nombre: 'Kuchen de Nuez', categoria: 'Pastelería', precio: 2800, total_vendido: 0 },
+                            { id_producto: 15, nombre: 'Torta de Chocolate', categoria: 'Pastelería', precio: 3200, total_vendido: 0 },
+                            { id_producto: 16, nombre: 'Cheesecake', categoria: 'Pastelería', precio: 3500, total_vendido: 0 },
+                            { id_producto: 17, nombre: 'Brownie', categoria: 'Pastelería', precio: 2200, total_vendido: 0 },
+                            { id_producto: 20, nombre: 'Croissant', categoria: 'Pastelería', precio: 1500, total_vendido: 0 }
+                          ];
+                        }
+                        productosAMostrar = combinarConVentas(defaultBD, todosProductosML);
+                      }
+                      colorTitulo = '#D2691E';
+                  }
+                  
+                  if (productosAMostrar.length === 0) {
+                    return (
+                      <div style={{ 
+                        gridColumn: '1 / -1', 
+                        padding: '2rem', 
+                        textAlign: 'center', 
+                        backgroundColor: '#f5f5f5', 
+                        borderRadius: '8px',
+                        color: '#666'
+                      }}>
+                        <p style={{ margin: 0 }}>No hay productos disponibles en esta categoría.</p>
+                      </div>
+                    );
+                  }
+                  
+                  return productosAMostrar.slice(0, 5).map((producto, index) => {
+                    // Calcular indicador de cumplimiento ML
+                    const vendidos = producto.total_vendido || 0;
+                    const prediccionBase = producto.prediccion || Math.round((index + 1) * 8 + 10); // Predicción estimada
+                    const porcentajeCumplimiento = prediccionBase > 0 ? Math.round((vendidos / prediccionBase) * 100) : 0;
+                    
+                    // Determinar estado del cumplimiento
+                    let estadoML = { emoji: '🔴', texto: 'Por debajo', color: '#e53935', bg: '#ffebee' };
+                    if (porcentajeCumplimiento >= 100) {
+                      estadoML = { emoji: '🟢', texto: '¡Superado!', color: '#2e7d32', bg: '#e8f5e9' };
+                    } else if (porcentajeCumplimiento >= 75) {
+                      estadoML = { emoji: '🟡', texto: 'En camino', color: '#f9a825', bg: '#fff8e1' };
+                    } else if (porcentajeCumplimiento >= 50) {
+                      estadoML = { emoji: '🟠', texto: 'Regular', color: '#ef6c00', bg: '#fff3e0' };
+                    }
+                    
+                    return (
+                      <div key={`sugerencia-${categoriaFiltroSugerencias}-${index}`} style={{
+                        padding: '1rem',
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        border: '1px solid #e0e0e0',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', color: colorTitulo }}>{producto.nombre}</h4>
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
+                          <strong>Categoría:</strong> {producto.categoria}
                         </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '6px', border: '1px dashed #ccc' }}>
-                <h3 style={{ marginBottom: '0.5rem', color: '#666' }}>🥐 Panadería</h3>
-                <p style={{ color: '#999', fontSize: '0.9rem', margin: 0 }}>No hay productos de panadería disponibles en este momento.</p>
-              </div>
-            )}
-
-
-            {/* Pastelería */}
-            {productosPasteleriaEstacion && productosPasteleriaEstacion.length > 0 ? (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  🎂 Pastelería
-                </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosPasteleriaEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`pasteleria-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#D2691E' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#D2691E' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
+                          <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
                         </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '6px', border: '1px dashed #ccc' }}>
-                <h3 style={{ marginBottom: '0.5rem', color: '#666' }}>🎂 Pastelería</h3>
-                <p style={{ color: '#999', fontSize: '0.9rem', margin: 0 }}>No hay productos de pastelería disponibles en este momento.</p>
-              </div>
-            )}
-
-
-            {/* Energizantes */}
-            {productosEnergizantesEstacion && productosEnergizantesEstacion.length > 0 ? (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  ⚡ Energizantes
-                </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosEnergizantesEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`energizante-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#FF6B00' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#FF6B00' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
+                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: colorTitulo }}>
+                          <strong>Vendidos:</strong> {vendidos} unidades
                         </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        {/* Indicador de Cumplimiento ML */}
+                        <div style={{ 
+                          marginTop: '0.5rem', 
+                          padding: '0.4rem 0.6rem', 
+                          backgroundColor: estadoML.bg, 
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem'
+                        }}>
+                          <span style={{ fontSize: '0.9rem' }}>{estadoML.emoji}</span>
+                          <span style={{ fontSize: '0.75rem', color: estadoML.color, fontWeight: '600' }}>
+                            ML: {estadoML.texto} ({porcentajeCumplimiento}%)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
-            ) : (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '6px', border: '1px dashed #ccc' }}>
-                <h3 style={{ marginBottom: '0.5rem', color: '#666' }}>⚡ Energizantes</h3>
-                <p style={{ color: '#999', fontSize: '0.9rem', margin: 0 }}>No hay productos energizantes disponibles en este momento.</p>
-              </div>
-            )}
-
-
-            {/* Empanadas */}
-            {productosEmpanadasEstacion && productosEmpanadasEstacion.length > 0 ? (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  🥟 Empanadas
-                </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosEmpanadasEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`empanada-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#CD853F' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#CD853F' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '6px', border: '1px dashed #ccc' }}>
-                <h3 style={{ marginBottom: '0.5rem', color: '#666' }}>🥟 Empanadas</h3>
-                <p style={{ color: '#999', fontSize: '0.9rem', margin: 0 }}>No hay empanadas disponibles en este momento.</p>
-              </div>
-            )}
-
-
-            {/* Productos recomendados generales (fallback) */}
-            {productosEstacion && productosEstacion.length > 0 && (
-              <div style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#424242' }}>
-                  📈 Otros productos recomendados para la estación
-                </h3>
-                <div className="ml-productos-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                  gap: '1rem'
-                }}>
-                  {productosEstacion.slice(0, 6).map((producto, index) => (
-                    <div key={`general-${index}`} style={{
-                      padding: '1rem',
-                      backgroundColor: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e0e0e0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#1976d2' }}>{producto.nombre}</h4>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Categoría:</strong> {producto.categoria}
-                      </p>
-                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                      </p>
-                      {producto.total_vendido > 0 && (
-                        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#2e7d32' }}>
-                          <strong>Vendidos:</strong> {producto.total_vendido} unidades
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* Recomendaciones adicionales */}
             {(recomendaciones && recomendaciones.length > 0) || (alertasStock.length > 0 || (datos.insumosBajos && datos.insumosBajos.length > 0)) ? (
@@ -1840,80 +2318,119 @@ const Dashboard = () => {
                   {/* Gráfico Único: Productos Más Vendidos con Filtro de Categoría */}
                     <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', gridColumn: 'span 2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                      <h4 style={{ margin: 0, color: '#1976d2', fontSize: '1.1rem' }}>
-                        {categoriaFiltroGrafico === 'todas' ? '🏆 Top Productos Más Vendidos (Todas las Categorías)' : 
-                         categoriaFiltroGrafico === 'Alimentos' ? '🍽️ Alimentos (Vendidos)' :
-                         categoriaFiltroGrafico === 'Bebidas Calientes' ? '☕ Bebidas Calientes (Vendidos)' :
-                         categoriaFiltroGrafico === 'Café Monster' ? '☕ Café Monster (Vendidos)' :
-                         categoriaFiltroGrafico === 'Empanadas' ? '🥟 Empanadas (Vendidos)' :
-                         categoriaFiltroGrafico === 'Energizantes' ? '⚡ Energizantes (Vendidos)' :
-                         categoriaFiltroGrafico === 'Panadería' ? '🥐 Panadería (Vendidos)' :
-                         categoriaFiltroGrafico === 'Pastelería' ? '🎂 Pastelería (Vendidos)' :
-                         'Productos Más Vendidos'}
+                      <h4 style={{ margin: 0, color: '#1976d2', fontSize: '1rem' }}>
+                        {(() => {
+                          const categoriaTexto = categoriaFiltroGrafico === 'todas' ? '🏆 Top Productos' : 
+                            categoriaFiltroGrafico === 'Café' ? '☕ Café' :
+                            categoriaFiltroGrafico === 'Té' ? '🍵 Té' :
+                            categoriaFiltroGrafico === 'Pastelería' ? '🎂 Pastelería' :
+                            categoriaFiltroGrafico === 'Empanadas' ? '🥟 Empanadas' :
+                            categoriaFiltroGrafico === 'Sándwiches' ? '🥪 Sándwiches' :
+                            categoriaFiltroGrafico === 'Bebidas' ? '🥤 Bebidas' :
+                            categoriaFiltroGrafico === 'Energéticas' ? '⚡ Energéticas' :
+                            'Productos';
+                          
+                          const estacionTexto = estacionFiltroGrafico === 'todas' ? '' :
+                            estacionFiltroGrafico === 'verano' ? ' - ☀️ Verano' :
+                            estacionFiltroGrafico === 'otoño' ? ' - 🍂 Otoño' :
+                            estacionFiltroGrafico === 'invierno' ? ' - ❄️ Invierno' :
+                            estacionFiltroGrafico === 'primavera' ? ' - 🌸 Primavera' : '';
+                          
+                          return `${categoriaTexto} (Vendidos)${estacionTexto}`;
+                        })()}
                       </h4>
-                      <div>
-                        <label htmlFor="filtro-categoria-grafico" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666' }}>
-                          Filtrar por:
-                        </label>
-                        <select
-                          id="filtro-categoria-grafico"
-                          value={categoriaFiltroGrafico}
-                          onChange={(e) => {
-                            try {
-                              setCategoriaFiltroGrafico(e.target.value);
-                            } catch (error) {
-                              console.error('Error cambiando filtro:', error);
-                            }
-                          }}
-                          style={{
-                            padding: '0.5rem',
-                            borderRadius: '4px',
-                            border: '1px solid #ddd',
-                            fontSize: '0.9rem',
-                            backgroundColor: 'white',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <option value="todas">Todas las Categorías</option>
-                          <option value="Alimentos">Alimentos</option>
-                          <option value="Bebidas Calientes">Bebidas Calientes</option>
-                          <option value="Café Monster">Café Monster</option>
-                          <option value="Empanadas">Empanadas</option>
-                          <option value="Energizantes">Energizantes</option>
-                          <option value="Panadería">Panadería</option>
-                          <option value="Pastelería">Pastelería</option>
-                        </select>
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div>
+                          <label htmlFor="filtro-categoria-grafico" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>
+                            Categoría:
+                          </label>
+                          <select
+                            id="filtro-categoria-grafico"
+                            value={categoriaFiltroGrafico}
+                            onChange={(e) => {
+                              try {
+                                setCategoriaFiltroGrafico(e.target.value);
+                              } catch (error) {
+                                console.error('Error cambiando filtro:', error);
+                              }
+                            }}
+                            style={{
+                              padding: '0.4rem 0.6rem',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="todas">Todas</option>
+                            <option value="Café">☕ Café</option>
+                            <option value="Té">🍵 Té</option>
+                            <option value="Pastelería">🎂 Pastelería</option>
+                            <option value="Empanadas">🥟 Empanadas</option>
+                            <option value="Sándwiches">🥪 Sándwiches</option>
+                            <option value="Bebidas">🥤 Bebidas</option>
+                            <option value="Energéticas">⚡ Energéticas</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="filtro-estacion-grafico" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>
+                            Estación:
+                          </label>
+                          <select
+                            id="filtro-estacion-grafico"
+                            value={estacionFiltroGrafico}
+                            onChange={(e) => setEstacionFiltroGrafico(e.target.value)}
+                            style={{
+                              padding: '0.4rem 0.6rem',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="todas">🗓️ Todo el Año</option>
+                            <option value="verano">☀️ Verano (Dic-Feb)</option>
+                            <option value="otoño">🍂 Otoño (Mar-May)</option>
+                            <option value="invierno">❄️ Invierno (Jun-Ago)</option>
+                            <option value="primavera">🌸 Primavera (Sep-Nov)</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                     {datosDonaUnico ? (
-                      <Doughnut 
-                        data={datosDonaUnico}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: true,
-                          plugins: {
-                            legend: {
-                              position: 'bottom',
-                              labels: {
-                                boxWidth: 12,
-                                font: { size: categoriaFiltroGrafico === 'todas' ? 10 : 11 },
-                                padding: categoriaFiltroGrafico === 'todas' ? 8 : 10,
-                                usePointStyle: true
-                              }
-                            },
-                            tooltip: {
-                              callbacks: {
-                                label: function(context) {
-                                  const label = context.label || '';
-                                  const value = context.parsed || 0;
-                                  return `${label}: ${value} unidades`;
+                      <div style={{ maxWidth: '400px', margin: '0 auto', padding: '1rem' }}>
+                        <Doughnut 
+                          key={`dona-${categoriaFiltroGrafico}-${estacionFiltroGrafico}`}
+                          data={datosDonaUnico}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            cutout: '50%',
+                            plugins: {
+                              legend: {
+                                position: 'bottom',
+                                labels: {
+                                  boxWidth: 12,
+                                  font: { size: 11 },
+                                  padding: 10,
+                                  usePointStyle: true
+                                }
+                              },
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    return `${label}: ${value} unidades`;
+                                  }
                                 }
                               }
                             }
-                          }
-                        }}
-                        height={categoriaFiltroGrafico === 'todas' ? 350 : 300}
-                      />
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div style={{ textAlign: 'center', padding: '3rem', color: '#666', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
                         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
