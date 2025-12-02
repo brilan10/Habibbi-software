@@ -1,36 +1,42 @@
 # ☕ Habibbi Café - Sistema de Gestión
 
-Sistema completo de gestión para cafetería desarrollado con React y Node.js. Diseñado para el mercado chileno con precios en pesos chilenos (CLP).
+Sistema completo de gestión para cafetería desarrollado con React y PHP. Diseñado para el mercado chileno con precios en pesos chilenos (CLP).
 
 ## 🚀 Descripción
 
-Habibbi Café es un sistema de gestión integral diseñado específicamente para cafeterías. Incluye funcionalidades de punto de venta, gestión de inventario, administración de usuarios y reportes detallados.
+Habibbi Café es un sistema de gestión integral diseñado específicamente para cafeterías. Incluye funcionalidades de punto de venta, gestión de inventario, administración de usuarios, reportes detallados y predicciones de ventas con Machine Learning.
 
 ## ✨ Características Principales
 
 ### 👨‍💼 Para Administradores
-- **Dashboard** con estadísticas en tiempo real
+- **Dashboard** con estadísticas en tiempo real y predicciones ML
 - **Gestión de Productos** - Catálogo completo con precios y stock
 - **Gestión de Recetas** - Control de ingredientes por producto
 - **Gestión de Insumos** - Control de inventario y alertas de stock
 - **Gestión de Usuarios** - Administración de roles y permisos
-- **Reportes** - Análisis de ventas y rendimiento
+- **Gestión de Proveedores** - Base de datos de proveedores
+- **Reportes** - Análisis de ventas con exportación a Excel
+- **Machine Learning** - Predicciones de ventas por estación
 
 ### 👨‍💻 Para Vendedores
 - **Punto de Venta** - Sistema de ventas intuitivo
 - **Gestión de Clientes** - Base de datos de clientes
+- **Dashboard Vendedor** - Estadísticas personales
 
 ## 🛠️ Tecnologías Utilizadas
 
 ### Frontend
 - **React 18** - Biblioteca de interfaz de usuario
-- **CSS3** - Estilos con paleta de colores de cafetería
-- **JavaScript ES6+** - Funcionalidades modernas
+- **Chart.js** - Gráficos interactivos
+- **XLSX** - Exportación a Excel
+- **CSS3** - Estilos con diseño responsive
+- **Webpack** - Bundler de módulos
 
 ### Backend
-- **Node.js** - Entorno de ejecución
-- **Express** - Framework web
-- **JSON** - Base de datos simulada
+- **PHP 7.4+** - Lenguaje del servidor
+- **MySQL/MariaDB** - Base de datos relacional
+- **PDO** - Conexión segura a base de datos
+- **API REST** - Arquitectura de servicios
 
 ## 📁 Estructura del Proyecto
 
@@ -38,33 +44,86 @@ Habibbi Café es un sistema de gestión integral diseñado específicamente para
 habibbi-software/
 ├── src/
 │   ├── frontend/
-│   │   ├── views/              # Componentes de vistas
-│   │   │   ├── Login.jsx       # Sistema de autenticación
-│   │   │   ├── Sidebar.jsx     # Menú lateral dinámico
-│   │   │   ├── Dashboard.jsx   # Panel administrativo
-│   │   │   ├── PuntoVenta.jsx  # Sistema de ventas
-│   │   │   └── GestionProductos.jsx # Administración de productos
-│   │   ├── components/         # Componentes reutilizables
-│   │   ├── styles/            # Archivos CSS
-│   │   ├── data/              # Datos simulados
-│   │   ├── App.jsx            # Componente principal
-│   │   └── index.jsx          # Punto de entrada
-│   └── backend/               # Lógica del servidor
-├── public/                    # Archivos estáticos
-├── package.json              # Dependencias del proyecto
-└── README.md                 # Documentación
+│   │   ├── views/                    # Componentes de vistas
+│   │   │   ├── Login.jsx             # Sistema de autenticación
+│   │   │   ├── Sidebar.jsx           # Menú lateral dinámico
+│   │   │   ├── Dashboard.jsx         # Panel administrativo con ML
+│   │   │   ├── DashboardVendedor.jsx # Panel para vendedores
+│   │   │   ├── PuntoVenta.jsx        # Sistema de ventas
+│   │   │   ├── GestionProductos.jsx  # Administración de productos
+│   │   │   ├── GestionRecetas.jsx    # Control de recetas
+│   │   │   ├── GestionInsumos.jsx    # Control de inventario
+│   │   │   ├── GestionUsuarios.jsx   # Administración de usuarios
+│   │   │   ├── GestionProveedores.jsx# Gestión de proveedores
+│   │   │   ├── GestionClientes.jsx   # Base de datos de clientes
+│   │   │   ├── Reportes.jsx          # Reportes y exportación Excel
+│   │   │   └── Caja.jsx              # Control de caja
+│   │   ├── components/               # Componentes reutilizables
+│   │   │   ├── Notificacion.jsx      # Sistema de notificaciones
+│   │   │   └── ProtectedRoute.jsx    # Rutas protegidas
+│   │   ├── styles/                   # Archivos CSS
+│   │   │   ├── App.css
+│   │   │   ├── Dashboard.css
+│   │   │   ├── Login.css
+│   │   │   └── ...
+│   │   ├── config/                   # Configuración
+│   │   │   └── apiConfig.js          # URLs de la API
+│   │   ├── hooks/                    # Custom hooks
+│   │   │   └── useNotification.js
+│   │   ├── data/                     # Estado global
+│   │   │   └── stateManager.js
+│   │   ├── App.jsx                   # Componente principal
+│   │   └── index.jsx                 # Punto de entrada
+│   │
+│   └── backend/
+│       ├── config/
+│       │   └── database.php          # Configuración BD (producción/desarrollo)
+│       ├── controllers/              # Controladores de la API
+│       │   ├── AuthController.php    # Autenticación
+│       │   ├── ProductosController.php
+│       │   ├── VentasController.php
+│       │   ├── InsumosController.php
+│       │   ├── RecetasController.php
+│       │   ├── UsuariosController.php
+│       │   ├── ProveedoresController.php
+│       │   ├── ClientesController.php
+│       │   ├── ReportesController.php
+│       │   ├── CajaController.php
+│       │   ├── DashboardController.php
+│       │   └── MLController.php      # Machine Learning
+│       ├── ml/                       # Servicios de Machine Learning
+│       │   ├── MLService.php
+│       │   ├── DataLoader.php
+│       │   ├── SeasonalPredictor.php
+│       │   └── RecommendationEngine.php
+│       ├── database/                 # Scripts SQL
+│       │   ├── 01_estructura_base_datos.sql
+│       │   └── 03_datos_completos_2025.sql
+│       ├── index.php                 # Punto de entrada API
+│       └── .htaccess                 # Configuración Apache
+│
+├── public/                           # Archivos estáticos
+│   └── index.html
+├── dist/                             # Build de producción
+│   ├── bundle.js
+│   └── index.html
+├── package.json                      # Dependencias Node.js
+├── webpack.config.js                 # Configuración Webpack
+└── README.md                         # Documentación
 ```
 
 ## 🚀 Instalación y Uso
 
 ### Prerrequisitos
 - Node.js (versión 14 o superior)
+- XAMPP o servidor con PHP 7.4+ y MySQL
 - npm o yarn
 
-### Instalación
+### Instalación Local (Desarrollo)
+
 ```bash
 # Clonar el repositorio
-git clone [url-del-repositorio]
+git clone https://github.com/brilan10/Habibbi-software.git
 
 # Navegar al directorio
 cd habibbi-software
@@ -72,8 +131,16 @@ cd habibbi-software
 # Instalar dependencias
 npm install
 
+# Copiar backend a XAMPP
+# Copiar carpeta src/backend a C:/xampp/htdocs/habibbi-api/
+
+# Importar base de datos
+# Ejecutar los scripts SQL en phpMyAdmin:
+# - 01_estructura_base_datos.sql
+# - 03_datos_completos_2025.sql
+
 # Ejecutar en modo desarrollo
-npm run dev
+npm start
 
 # Construir para producción
 npm run build
@@ -81,13 +148,49 @@ npm run build
 
 ### Acceso al Sistema
 1. Abrir navegador en `http://localhost:8080`
-2. Usar las credenciales de prueba:
-   - **Admin:** `admin` / `admin123`
-   - **Vendedor:** `vendedor` / `vendedor123`
+2. Credenciales de prueba:
+   - **Admin:** `admin@habibbi.cl` / `password`
+   - **Vendedor:** `vendedor@habibbi.cl` / `password`
+
+## 📊 Funcionalidades del Dashboard
+
+### Predicciones ML por Estación
+- ☀️ **Verano** - Bebidas frías, energéticas, smoothies
+- 🍂 **Otoño** - Café con especias, pasteles de temporada
+- ❄️ **Invierno** - Bebidas calientes, empanadas, chocolate
+- 🌸 **Primavera** - Balance entre frío y caliente
+
+### Gráficos Interactivos
+- Top productos más vendidos (filtrable por categoría y estación)
+- Comparativo de meses
+- Análisis por categoría
+
+### Categorías de Productos
+- ☕ Café
+- 🍵 Té
+- 🎂 Pastelería
+- 🥟 Empanadas
+- 🥪 Sándwiches
+- 🥤 Bebidas
+- ⚡ Energéticas (Red Bull, Monster)
+
+## 📈 Reportes y Exportación
+
+### Tipos de Reportes
+- **Reporte de Ventas** - Detalle completo de transacciones
+- **Reporte de Productos** - Ranking de más vendidos
+- **Reporte de Vendedores** - Rendimiento por empleado
+- **Reporte Mensual** - Resumen del mes con gráficos
+- **Reporte Semanal** - Análisis de la semana
+
+### Exportación a Excel
+Cada reporte genera un archivo Excel con múltiples hojas:
+- 📋 Reporte principal
+- 🏆 Productos más vendidos
+- 📊 Resumen
+- 📅 Detalle por día (filtrable)
 
 ## 🎨 Paleta de Colores
-
-El sistema utiliza una paleta de colores cálida inspirada en cafeterías:
 
 - **Marrón Principal:** `#8C6A4F`
 - **Naranja Suave:** `#D9A261`
@@ -96,14 +199,12 @@ El sistema utiliza una paleta de colores cálida inspirada en cafeterías:
 
 ## 💰 Moneda
 
-El sistema está configurado para el mercado chileno:
 - **Moneda:** Pesos Chilenos (CLP)
 - **Formato:** $2.500, $15.000, etc.
-- **Precios:** Configurados para el mercado local
 
 ## 📱 Responsive Design
 
-El sistema está optimizado para:
+Optimizado para:
 - 💻 Escritorio (1200px+)
 - 📱 Tablet (768px - 1199px)
 - 📱 Móvil (320px - 767px)
@@ -112,40 +213,49 @@ El sistema está optimizado para:
 
 ### Administrador
 - Acceso completo a todas las funcionalidades
-- Gestión de usuarios y productos
-- Acceso a reportes y estadísticas
+- Gestión de usuarios, productos e insumos
+- Acceso a reportes, estadísticas y ML
+- Control de caja
 
 ### Vendedor
-- Acceso limitado a funciones de venta
-- Gestión básica de clientes
 - Punto de venta
+- Gestión de clientes
+- Dashboard personal
 
-## 📊 Funcionalidades Implementadas
+## ✅ Funcionalidades Implementadas
 
 - ✅ Sistema de autenticación con roles
-- ✅ Dashboard administrativo con estadísticas
+- ✅ Dashboard administrativo con predicciones ML
+- ✅ Dashboard para vendedores
 - ✅ Punto de venta completo
 - ✅ Gestión de productos (CRUD)
-- ✅ Menú lateral dinámico
+- ✅ Gestión de recetas e ingredientes
+- ✅ Gestión de insumos con alertas de stock
+- ✅ Gestión de usuarios
+- ✅ Gestión de proveedores
+- ✅ Gestión de clientes
+- ✅ Control de caja
+- ✅ Reportes con exportación a Excel
+- ✅ Gráficos interactivos (Chart.js)
+- ✅ Predicciones de ventas por estación (ML)
 - ✅ Diseño responsive
-- ✅ Validaciones de formularios
-- ✅ Datos simulados para demo
+- ✅ Notificaciones en tiempo real
 
-## 🚧 En Desarrollo
+## 🌐 Despliegue
 
-- 🔄 Gestión de Recetas
-- 🔄 Gestión de Insumos
-- 🔄 Gestión de Usuarios
-- 🔄 Reportes detallados
-- 🔄 Gestión de Clientes
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abre un Pull Request
+### Producción (Web Host Chile)
+```
+public_html/
+├── index.html
+├── dist/
+│   └── bundle.js
+└── habibbi-backend/
+    ├── index.php
+    ├── .htaccess
+    ├── config/
+    ├── controllers/
+    └── ml/
+```
 
 ## 📝 Licencia
 
@@ -158,3 +268,5 @@ Desarrollado con ❤️ para la gestión eficiente de cafeterías.
 ---
 
 **Habibbi Café** - Donde cada taza cuenta ☕
+
+*Última actualización: Diciembre 2024*
