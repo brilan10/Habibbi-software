@@ -12,8 +12,8 @@ module.exports = {
     filename: 'bundle.js',
     // IMPORTANTE: 
     // - Desarrollo local: '/' (webpack-dev-server sirve desde raíz)
-    // - Producción: '/' (servidor real sirve desde /bundle.js en la misma carpeta que index.html)
-    publicPath: '/',
+    // - Producción: './' (ruta relativa para que funcione desde cualquier ubicación)
+    publicPath: isProduction ? './' : '/',
     clean: true // Limpia la carpeta dist al compilar
   },
   module: {
@@ -40,7 +40,16 @@ module.exports = {
       filename: 'index.html',
       inject: true, // Inyecta automáticamente el script bundle.js
       minify: isProduction, // Minificar solo en producción
-      scriptLoading: 'defer' // Carga el script de forma diferida
+      scriptLoading: 'defer', // Carga el script de forma diferida
+      // Configurar la ruta del script según el entorno
+      ...(isProduction ? {
+        // En producción, el bundle.js está en dist/, pero index.html está en la raíz
+        // Entonces la ruta debe ser ./dist/bundle.js
+        publicPath: './dist/'
+      } : {
+        // En desarrollo, usar ruta absoluta
+        publicPath: '/'
+      })
     })
   ],
   resolve: {

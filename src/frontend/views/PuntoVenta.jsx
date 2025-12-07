@@ -43,6 +43,12 @@ const PuntoVenta = () => {
   const [filtroCliente, setFiltroCliente] = useState('');
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
 
+  // Estado para los vendedores disponibles
+  const [vendedores, setVendedores] = useState([]);
+  
+  // Estado para el vendedor seleccionado
+  const [vendedorSeleccionado, setVendedorSeleccionado] = useState(null);
+
   // Estado para filtro por categoría
   const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
 
@@ -57,6 +63,38 @@ const PuntoVenta = () => {
   const [recomendacionesML, setRecomendacionesML] = useState([]);
   // Recomendaciones locales (fallback si ML no está disponible)
   const [recomendaciones, setRecomendaciones] = useState([]);
+  // Agregados disponibles (no de ML, directos de la BD)
+  const [agregadosDisponibles, setAgregadosDisponibles] = useState([]);
+  const [cargandoAgregados, setCargandoAgregados] = useState(false);
+
+  // Cargar agregados cuando el filtro sea "Café"
+  useEffect(() => {
+    const cargarAgregados = async () => {
+      if (categoriaFiltro === 'Café' || categoriaFiltro === 'todas') {
+        try {
+          setCargandoAgregados(true);
+          console.log('🔄 Cargando agregados desde API...');
+          const response = await apiClient.get(API_CONFIG.AGREGADOS.LIST);
+          if (response.data && response.data.success) {
+            setAgregadosDisponibles(response.data.data || []);
+            console.log('✅ Agregados cargados:', response.data.data?.length || 0);
+          } else {
+            console.log('⚠️ No se pudieron cargar agregados');
+            setAgregadosDisponibles([]);
+          }
+        } catch (error) {
+          console.error('❌ Error cargando agregados:', error);
+          setAgregadosDisponibles([]);
+        } finally {
+          setCargandoAgregados(false);
+        }
+      } else {
+        setAgregadosDisponibles([]);
+      }
+    };
+    
+    cargarAgregados();
+  }, [categoriaFiltro]);
 
   // Cargar productos al montar el componente desde la API
   useEffect(() => {
@@ -196,6 +234,44 @@ const PuntoVenta = () => {
     cargarClientes();
   }, []);
 
+  // Cargar vendedores al montar el componente desde la API
+  useEffect(() => {
+    const cargarVendedores = async () => {
+      try {
+        console.log('🔄 PuntoVenta - Cargando vendedores desde API...');
+        const response = await apiClient.get(API_CONFIG.USUARIOS.LIST);
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          // Filtrar solo usuarios con rol vendedor y activos
+          const vendedoresData = response.data.data.filter(u => 
+            (u.rol === 'vendedor' || u.rol === 'admin') && u.activo === 1
+          );
+          setVendedores(vendedoresData);
+          console.log('✅ PuntoVenta - Vendedores cargados desde BD:', vendedoresData.length);
+          
+          // Establecer el usuario actual como vendedor por defecto
+          const usuarioActual = JSON.parse(localStorage.getItem('usuario') || sessionStorage.getItem('usuario') || '{}');
+          const idUsuarioActual = usuarioActual.id_usuario || usuarioActual.id;
+          if (idUsuarioActual) {
+            const vendedorActual = vendedoresData.find(v => 
+              (v.id_usuario || v.id) === idUsuarioActual
+            );
+            if (vendedorActual) {
+              setVendedorSeleccionado(vendedorActual);
+            }
+          }
+        } else {
+          console.log('⚠️ PuntoVenta - Respuesta de vendedores sin datos válidos');
+          setVendedores([]);
+        }
+      } catch (error) {
+        console.error('❌ PuntoVenta - Error cargando vendedores:', error);
+        setVendedores([]);
+      }
+    };
+    
+    cargarVendedores();
+  }, []);
+
   // Filtrar clientes cuando cambia el filtro de búsqueda
   useEffect(() => {
     if (!filtroCliente || filtroCliente.trim() === '') {
@@ -252,7 +328,12 @@ const PuntoVenta = () => {
 
   // Cargar recomendaciones del ML cuando hay café en el carrito
   useEffect(() => {
-    const hayCafeEnCarrito = carrito.some((item) => esProductoCafe(item));
+    const hayCafeEnCarrito = carrito.some((item) => esProductoCafe(item) && !item.esAgregado);
+    console.log('🔍 Verificando café en carrito:', {
+      carritoLength: carrito.length,
+      hayCafeEnCarrito,
+      itemsEnCarrito: carrito.map(item => ({ nombre: item.nombre, categoria: item.categoria }))
+    });
     
     if (hayCafeEnCarrito) {
       // Cargar recomendaciones del ML
@@ -313,10 +394,13 @@ const PuntoVenta = () => {
             setRecomendacionesML(recomendacionesFormateadas);
             setRecomendaciones(recomendacionesFormateadas);
             console.log('✅ Recomendaciones ML cargadas:', recomendacionesFormateadas.length);
+            
+            // Ya no cargamos agregados desde ML, se cargan directamente cuando el filtro es Café
             console.log('📋 Categorías incluidas:', [...new Set(recomendacionesFormateadas.map(p => p.categoria))]);
           }
         } catch (error) {
           console.error('❌ Error cargando recomendaciones ML:', error);
+          console.error('❌ Detalles del error:', error.response?.data || error.message);
           // Fallback a recomendaciones locales
           const idsEnCarrito = carrito.map((item) => item.id || item.id_producto);
           const sugerencias = productos
@@ -383,6 +467,7 @@ const PuntoVenta = () => {
       if (esBebida) {
         // Para bebidas, guardar precio base y calcular precio según tamaño M
         const precioBase = producto.precio;
+        // Guardar precioBase para todos los productos (no solo bebidas)
         const precioConTamaño = calcularPrecioPorTamaño(precioBase, 'M');
         
         setCarrito([...carrito, { 
@@ -428,8 +513,18 @@ const PuntoVenta = () => {
    */
   const actualizarCantidad = (productoId, nuevaCantidad) => {
     if (nuevaCantidad <= 0) {
-      // Si la cantidad es 0 o menor, elimina el producto
-      setCarrito(carrito.filter(item => item.id !== productoId));
+      // Si la cantidad es 0 o menor, elimina el producto y sus agregados
+      const itemAEliminar = carrito.find(item => item.id === productoId);
+      if (itemAEliminar && !itemAEliminar.esAgregado) {
+        // Es un producto normal, eliminar también sus agregados
+        setCarrito(carrito.filter(item => 
+          item.id !== productoId && 
+          !(item.esAgregado && item.id_producto_padre === productoId)
+        ));
+      } else {
+        // Es un agregado, solo eliminar el item
+        setCarrito(carrito.filter(item => item.id !== productoId));
+      }
     } else {
       // Actualiza la cantidad del producto
       setCarrito(carrito.map(item =>
@@ -487,7 +582,18 @@ const PuntoVenta = () => {
    * Función para eliminar un producto del carrito
    */
   const eliminarDelCarrito = (productoId) => {
-    setCarrito(carrito.filter(item => item.id !== productoId));
+    // Si se elimina un producto de café, también eliminar sus agregados asociados
+    const itemAEliminar = carrito.find(item => item.id === productoId);
+    if (itemAEliminar && !itemAEliminar.esAgregado) {
+      // Es un producto normal, eliminar también sus agregados
+      setCarrito(carrito.filter(item => 
+        item.id !== productoId && 
+        !(item.esAgregado && item.id_producto_padre === productoId)
+      ));
+    } else {
+      // Es un agregado o no tiene agregados, solo eliminar el item
+      setCarrito(carrito.filter(item => item.id !== productoId));
+    }
   };
 
   /**
@@ -495,8 +601,11 @@ const PuntoVenta = () => {
    * Suma el precio de todos los productos multiplicado por su cantidad
    */
   const calcularTotal = () => {
+    // Calcular total - ahora los agregados son items separados
     return carrito.reduce((total, item) => {
-      return total + (item.precio * item.cantidad);
+      const precioBase = item.precioBase || item.precio || 0;
+      const cantidad = item.cantidad || 1;
+      return total + (precioBase * cantidad);
     }, 0);
   };
 
@@ -525,26 +634,32 @@ const PuntoVenta = () => {
       return;
     }
 
-    // Obtener usuario actual del localStorage (guardado en Login.jsx)
-    const usuarioActual = JSON.parse(localStorage.getItem('usuario') || sessionStorage.getItem('usuario') || '{}');
+    // Obtener id_usuario del vendedor seleccionado o del usuario actual
+    let id_usuario = null;
     
-    // Intentar obtener id_usuario de diferentes campos posibles
-    let id_usuario = usuarioActual.id_usuario || usuarioActual.id || null;
+    if (vendedorSeleccionado) {
+      // Usar el vendedor seleccionado manualmente
+      id_usuario = vendedorSeleccionado.id_usuario || vendedorSeleccionado.id;
+      console.log('👤 Vendedor seleccionado:', vendedorSeleccionado.nombre, 'ID:', id_usuario);
+    } else {
+      // Fallback: usar usuario actual del localStorage
+      const usuarioActual = JSON.parse(localStorage.getItem('usuario') || sessionStorage.getItem('usuario') || '{}');
+      id_usuario = usuarioActual.id_usuario || usuarioActual.id || null;
+      console.log('👤 Usando usuario actual:', usuarioActual);
+    }
     
     // Si no hay id_usuario válido, mostrar error
     if (!id_usuario || id_usuario === 0) {
       console.error('❌ PuntoVenta - No se encontró id_usuario válido');
-      console.error('❌ Usuario actual:', usuarioActual);
       setAlerta({
         isOpen: true,
         type: 'error',
         title: 'Error de Autenticación',
-        message: 'No se pudo identificar al usuario. Por favor, cierra sesión y vuelve a iniciar sesión.'
+        message: 'Debes seleccionar un vendedor para realizar la venta.'
       });
       return;
     }
     
-    console.log('👤 Usuario actual:', usuarioActual);
     console.log('👤 ID Usuario para venta:', id_usuario);
     
     // Obtener ID del cliente si está seleccionado
@@ -564,11 +679,30 @@ const PuntoVenta = () => {
     const total = calcularTotal();
     
     // Preparar detalles de la venta para el backend
-    const detalles = carrito.map(item => ({
+    // Separar productos normales de agregados
+    const productosNormales = carrito.filter(item => !item.esAgregado);
+    const agregados = carrito.filter(item => item.esAgregado);
+    
+    const detalles = productosNormales.map(item => ({
       id_producto: item.id || item.id_producto,
       cantidad: item.cantidad || 1,
-      subtotal: (item.precio || 0) * (item.cantidad || 1)
+      subtotal: (item.precioBase || item.precio || 0) * (item.cantidad || 1),
+      agregados: agregados
+        .filter(agregado => agregado.id_producto_padre === item.id)
+        .map(agregado => ({
+          id_agregado: agregado.id_agregado,
+          precio_adicional: agregado.precio_adicional || agregado.precio || 0
+        }))
     }));
+    
+    // Si hay agregados sin producto padre (no debería pasar, pero por seguridad)
+    const agregadosSinPadre = agregados.filter(agregado => 
+      !productosNormales.some(prod => prod.id === agregado.id_producto_padre)
+    );
+    
+    if (agregadosSinPadre.length > 0) {
+      console.warn('⚠️ Agregados sin producto padre encontrados:', agregadosSinPadre);
+    }
 
     // Preparar datos de la venta para el backend
     const datosVenta = {
@@ -890,6 +1024,41 @@ const PuntoVenta = () => {
     return Array.from(categoriasMap.values()).sort();
   };
 
+  // Cargar agregados cuando hay café en el carrito (similar a ML)
+  useEffect(() => {
+    const hayCafeEnCarrito = carrito.some((item) => esProductoCafe(item) && !item.esAgregado);
+    
+    const cargarAgregados = async () => {
+      if (hayCafeEnCarrito) {
+        try {
+          setCargandoAgregados(true);
+          console.log('🔄 Cargando agregados para productos de café en el carrito...');
+          const response = await apiClient.get(API_CONFIG.AGREGADOS.LIST);
+          if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            setAgregadosDisponibles(response.data.data);
+            console.log('✅ Agregados cargados:', response.data.data.length);
+            console.log('📋 Agregados disponibles:', response.data.data.map(a => a.nombre));
+          } else {
+            console.log('⚠️ No se encontraron agregados o la tabla no existe');
+            setAgregadosDisponibles([]);
+          }
+          } catch (error) {
+          console.error('❌ Error cargando agregados:', error);
+          console.error('❌ Detalles del error:', error.response?.data || error.message);
+          console.error('❌ URL intentada:', API_CONFIG.BASE_URL + API_CONFIG.AGREGADOS.LIST);
+          setAgregadosDisponibles([]);
+        } finally {
+          setCargandoAgregados(false);
+        }
+      } else {
+        // Limpiar agregados si no hay café en el carrito
+        setAgregadosDisponibles([]);
+      }
+    };
+    
+    cargarAgregados();
+  }, [carrito]);
+
   /**
    * Función para aplicar filtro por categoría
    * Filtra de productos con stock, pero si no hay resultados, muestra productos sin stock de esa categoría
@@ -1105,6 +1274,166 @@ const PuntoVenta = () => {
             </div>
           )}
 
+          {/* Agregados disponibles - Se muestra cuando hay café en el carrito (similar a ML) */}
+          {(() => {
+            const hayCafe = carrito.some((item) => esProductoCafe(item) && !item.esAgregado);
+            const hayAgregados = agregadosDisponibles.length > 0;
+            console.log('🔍 Renderizando agregados:', { 
+              hayCafe, 
+              hayAgregados, 
+              cantidadAgregados: agregadosDisponibles.length,
+              carritoLength: carrito.length,
+              itemsCarrito: carrito.map(i => ({ nombre: i.nombre, categoria: i.categoria }))
+            });
+            return hayCafe && hayAgregados;
+          })() && (
+            <div
+              className="agregados-panel"
+              style={{
+                backgroundColor: '#e8f5e9',
+                border: '1px solid #81c784',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '1.5rem'
+              }}
+            >
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#2e7d32' }}>
+                🍯 Agregados Disponibles
+              </h3>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', color: '#388e3c' }}>
+                Sabores y especias que puedes agregar a tus cafés.
+              </p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '1rem',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  paddingRight: '8px'
+                }}
+                className="recomendaciones-scroll"
+              >
+                {agregadosDisponibles.map((agregado) => (
+                  <div
+                    key={agregado.id_agregado}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '6px',
+                      border: '1px solid #a5d6a7',
+                      padding: '12px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <h4 style={{ margin: '0 0 4px 0', color: '#2e7d32', fontSize: '0.95rem' }}>
+                      {agregado.nombre}
+                    </h4>
+                    <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem', color: '#388e3c' }}>
+                      {agregado.categoria}
+                    </p>
+                    {agregado.precio_adicional > 0 ? (
+                      <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#1b5e20', fontSize: '0.9rem' }}>
+                        +{formatearMoneda(agregado.precio_adicional)}
+                      </p>
+                    ) : (
+                      <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#1b5e20', fontSize: '0.9rem' }}>
+                        Gratis
+                      </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        // Encontrar el primer producto de café en el carrito
+                        const productoCafe = carrito.find((item) => esProductoCafe(item) && !item.esAgregado);
+                        if (productoCafe) {
+                          // Crear un nuevo item en el carrito para el agregado (como objeto separado)
+                          const nuevoAgregado = {
+                            id: `agregado-${agregado.id_agregado}-${productoCafe.id}-${Date.now()}`, // ID único
+                            nombre: `${agregado.nombre} (para ${productoCafe.nombre})`,
+                            nombreAgregado: agregado.nombre,
+                            id_producto_padre: productoCafe.id, // Referencia al café
+                            precio: agregado.precio_adicional || 0,
+                            precioBase: agregado.precio_adicional || 0,
+                            cantidad: 1,
+                            categoria: agregado.categoria || 'Agregado',
+                            esAgregado: true, // Marcar como agregado
+                            id_agregado: agregado.id_agregado,
+                            descripcion: agregado.descripcion || ''
+                          };
+                          
+                          // Verificar si ya existe este agregado para este producto
+                          const agregadoYaExiste = carrito.some(item => 
+                            item.esAgregado && 
+                            item.id_producto_padre === productoCafe.id && 
+                            item.id_agregado === agregado.id_agregado
+                          );
+                          
+                          if (!agregadoYaExiste) {
+                            setCarrito([...carrito, nuevoAgregado]);
+                            setAlerta({
+                              isOpen: true,
+                              type: 'success',
+                              title: '✅ Agregado añadido',
+                              message: `${agregado.nombre} agregado como item separado (+${formatearMoneda(agregado.precio_adicional || 0)})`
+                            });
+                          } else {
+                            setAlerta({
+                              isOpen: true,
+                              type: 'info',
+                              title: 'Agregado ya existe',
+                              message: `El agregado "${agregado.nombre}" ya está en el carrito para este café`
+                            });
+                          }
+                        } else {
+                          setAlerta({
+                            isOpen: true,
+                            type: 'info',
+                            title: 'Agregar al carrito',
+                            message: `Primero agrega un café al carrito para poder añadir "${agregado.nombre}"`
+                          });
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 0',
+                        backgroundColor: '#4caf50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      ➕ Agregar al café
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Mensaje de depuración si hay café pero no agregados */}
+          {carrito.some((item) => esProductoCafe(item) && !item.esAgregado) && agregadosDisponibles.length === 0 && !cargandoAgregados && (
+            <div 
+              style={{
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '1.5rem',
+                textAlign: 'center',
+                color: '#856404'
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                ⚠️ No se pudieron cargar los agregados. Verifica que la tabla 'agregados' exista en la base de datos.
+              </p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem' }}>
+                Abre la consola del navegador (F12) para ver más detalles.
+              </p>
+            </div>
+          )}
+
           {cargandoProductos ? (
             <div className="cargando-productos">
               <p>Cargando productos desde la base de datos...</p>
@@ -1183,12 +1512,69 @@ const PuntoVenta = () => {
                 <p>Selecciona productos para comenzar</p>
               </div>
             ) : (
-              carrito.map((item) => (
-                <div key={item.id} className="carrito-item">
-                  <div className="item-info">
-                    <h4 className="item-nombre">{item.nombre}</h4>
-                    <p className="item-precio">{formatearMoneda(item.precio)} c/u</p>
-                  </div>
+              carrito.map((item) => {
+                // Si es un agregado, mostrarlo con estilo diferente
+                if (item.esAgregado) {
+                  const precioBase = item.precioBase || item.precio || 0;
+                  const subtotalItem = precioBase * item.cantidad;
+                  
+                  return (
+                    <div key={item.id}>
+                      <div className="carrito-item" style={{ 
+                        backgroundColor: '#f0f8f0', 
+                        borderLeft: '3px solid #4caf50',
+                        marginLeft: '20px'
+                      }}>
+                        <div className="item-info">
+                          <h4 className="item-nombre" style={{ fontSize: '0.9rem', color: '#2e7d32' }}>
+                            ➕ {item.nombreAgregado || item.nombre}
+                          </h4>
+                          <p className="item-precio" style={{ fontSize: '0.85rem' }}>
+                            {formatearMoneda(precioBase)} c/u
+                          </p>
+                        </div>
+                        
+                        <div className="item-controls">
+                          <button
+                            className="btn-cantidad"
+                            onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                          >
+                            ➖
+                          </button>
+                          <span className="item-cantidad">{item.cantidad}</span>
+                          <button
+                            className="btn-cantidad"
+                            onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                          >
+                            ➕
+                          </button>
+                          <button
+                            className="btn-eliminar"
+                            onClick={() => eliminarDelCarrito(item.id)}
+                          >
+                            ❌
+                          </button>
+                        </div>
+                        
+                        <div className="item-subtotal">
+                          {formatearMoneda(subtotalItem)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Producto normal (no agregado)
+                const precioBase = item.precioBase || item.precio || 0;
+                const subtotalItem = precioBase * item.cantidad;
+                
+                return (
+                  <div key={item.id}>
+                    <div className="carrito-item">
+                      <div className="item-info">
+                        <h4 className="item-nombre">{item.nombre}</h4>
+                        <p className="item-precio">{formatearMoneda(precioBase)} c/u</p>
+                      </div>
                   
                   {/* Selector de tamaño (solo para bebidas) */}
                   {(() => {
@@ -1242,11 +1628,13 @@ const PuntoVenta = () => {
                     </button>
                   </div>
                   
-                  <div className="item-subtotal">
-                    {formatearMoneda(item.precio * item.cantidad)}
+                      <div className="item-subtotal">
+                        {formatearMoneda(subtotalItem)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -1350,6 +1738,36 @@ const PuntoVenta = () => {
                 {filtroCliente && clientesFiltrados.length === 0 && clientes.length > 0 && (
                   <small className="cliente-sin-resultados">
                     No se encontraron clientes. Puedes agregar uno nuevo con el botón "Inscribir Cliente"
+                  </small>
+                )}
+              </div>
+              
+              <div className="form-group">
+                <label>👨‍💼 Vendedor:</label>
+                <select
+                  value={vendedorSeleccionado ? (vendedorSeleccionado.id_usuario || vendedorSeleccionado.id) : ''}
+                  onChange={(e) => {
+                    const vendedorId = parseInt(e.target.value);
+                    const vendedor = vendedores.find(v => (v.id_usuario || v.id) === vendedorId);
+                    setVendedorSeleccionado(vendedor || null);
+                  }}
+                  className="form-control"
+                  required
+                >
+                  <option value="">Seleccionar vendedor...</option>
+                  {vendedores.map(vendedor => (
+                    <option 
+                      key={vendedor.id_usuario || vendedor.id} 
+                      value={vendedor.id_usuario || vendedor.id}
+                    >
+                      {vendedor.nombre} {vendedor.apellido ? vendedor.apellido : ''} 
+                      {vendedor.rol === 'admin' ? ' (Admin)' : ' (Vendedor)'}
+                    </option>
+                  ))}
+                </select>
+                {!vendedorSeleccionado && (
+                  <small style={{ color: '#ff4444', display: 'block', marginTop: '5px' }}>
+                    ⚠️ Debes seleccionar un vendedor para realizar la venta
                   </small>
                 )}
               </div>

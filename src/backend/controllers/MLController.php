@@ -73,6 +73,12 @@ class MLController {
             $this->productosPopularesPorEstacion();
         } else if (strpos($path, '/recomendaciones') !== false || strpos($path, '/api/ml/recomendaciones') !== false) {
             $this->recomendacionesGenerales();
+        } else if (strpos($path, '/prediccion-agotamiento') !== false || strpos($path, '/api/ml/prediccion-agotamiento') !== false) {
+            $this->prediccionAgotamiento();
+        } else if (strpos($path, '/predicciones-stock') !== false || strpos($path, '/api/ml/predicciones-stock') !== false) {
+            $this->prediccionesStock();
+        } else if (strpos($path, '/productos-anuales') !== false || strpos($path, '/api/ml/productos-anuales') !== false) {
+            $this->productosMasVendidosAnuales();
         } else {
             $this->sendResponse(404, [
                 'error' => 'Endpoint de ML no encontrado',
@@ -80,7 +86,10 @@ class MLController {
                 'available_endpoints' => [
                     '/api/ml/prediccion-estacion',
                     '/api/ml/productos-estacion',
-                    '/api/ml/recomendaciones'
+                    '/api/ml/recomendaciones',
+                    '/api/ml/prediccion-agotamiento',
+                    '/api/ml/predicciones-stock',
+                    '/api/ml/productos-anuales'
                 ]
             ]);
         }
@@ -91,7 +100,12 @@ class MLController {
      */
     public function prediccionPorEstacion() {
         try {
-            $estacion = $this->obtenerEstacionActual();
+            // Permitir filtrar por estación específica si se pasa como parámetro
+            $estacionFiltro = isset($_GET['estacion']) && in_array($_GET['estacion'], ['verano', 'otoño', 'invierno', 'primavera']) 
+                ? $_GET['estacion'] 
+                : null;
+            
+            $estacion = $estacionFiltro ? $estacionFiltro : $this->obtenerEstacionActual();
 
             $productosRecomendados = [];
             $productosCafes = [];
@@ -102,6 +116,7 @@ class MLController {
             $productosEmpanadas = [];
             $prediccionMl = null;
             $alertasStockMl = [];
+            $prediccionesAgotamiento = [];
 
             // Usar PHP-ML en lugar del servicio Python
             if ($this->mlService) {
@@ -123,9 +138,13 @@ class MLController {
 
                     // Obtener alertas de stock
                     $alertasStockMl = $this->mlService->alertasStock(5);
+                    
+                    // Obtener predicciones de agotamiento de insumos
+                    $prediccionesAgotamiento = $this->mlService->obtenerPrediccionesAgotamientoInsumos(10);
                 } catch (\Exception $e) {
                     error_log("Error en MLService: " . $e->getMessage());
                     // Continuar con fallback
+                    $prediccionesAgotamiento = [];
                 }
             }
             
@@ -138,24 +157,24 @@ class MLController {
             $productosEstacion = $this->obtenerProductosPorEstacion($estacion);
 
             if (empty($productosCafes)) {
-                $productosCafes = $this->filtrarProductosPorTipo($productosEstacion, 'cafes', 6);
+                $productosCafes = $this->obtenerProductosPorCategoria(['Café'], 'cafes', 6);
                 if (empty($productosCafes)) {
-                    $productosCafes = $this->obtenerProductosPorCategoria(['Bebidas Calientes', 'Cafés Especiales', 'Cafés Tradicionales'], 'cafes', 6);
+                    $productosCafes = $this->filtrarProductosPorTipo($productosEstacion, 'cafes', 6);
                 }
             }
 
             if (empty($productosDulces)) {
-                $productosDulces = $this->filtrarProductosPorTipo($productosEstacion, 'dulces', 6);
+                $productosDulces = $this->obtenerProductosPorCategoria(['Pastelería'], 'dulces', 6);
                 if (empty($productosDulces)) {
-                    $productosDulces = $this->obtenerProductosPorCategoria(['Panadería', 'Postres', 'Dulces', 'Pastelería'], 'dulces', 6);
+                    $productosDulces = $this->filtrarProductosPorTipo($productosEstacion, 'dulces', 6);
                 }
             }
             
-            // Obtener productos por categorías específicas
-            $productosPanaderia = $this->obtenerProductosPorCategoria(['Panadería'], 'panaderia', 6);
-            $productosPasteleria = $this->obtenerProductosPorCategoria(['Pastelería', 'Postres'], 'pasteleria', 6);
-            $productosEnergizantes = $this->obtenerProductosPorCategoria(['Energizantes', 'Bebidas Energéticas'], 'energizantes', 6);
-            $productosEmpanadas = $this->obtenerProductosPorCategoria(['Empanadas', 'Salados'], 'empanadas', 6);
+            // Obtener productos por categorías específicas (usando categorías reales de la BD)
+            $productosPanaderia = $this->obtenerProductosPorCategoria(['Pastelería'], 'panaderia', 6);
+            $productosPasteleria = $this->obtenerProductosPorCategoria(['Pastelería'], 'pasteleria', 6);
+            $productosEnergizantes = $this->obtenerProductosPorCategoria(['Energéticas'], 'energizantes', 6);
+            $productosEmpanadas = $this->obtenerProductosPorCategoria(['Empanadas'], 'empanadas', 6);
             
             // Asegurar formato correcto de los productos
             $productosCafes = $this->formatearProductos($productosCafes);
@@ -168,7 +187,12 @@ class MLController {
             $productosRecomendados = $this->combinarListasProductos([$productosCafes, $productosDulces], 10);
             $productosRecomendados = $this->formatearProductos($productosRecomendados);
 
-            $datosGraficos = $this->obtenerDatosGraficos();
+            // Pasar el filtro de estación a los gráficos (solo afecta Top 5 y Distribución)
+            $datosGraficos = $this->obtenerDatosGraficos($estacionFiltro);
+            
+            // Log para debugging
+            error_log("MLController - Filtro de estación aplicado: " . ($estacionFiltro ? $estacionFiltro : 'ninguno'));
+            error_log("MLController - Datos de gráficos generados: " . json_encode($datosGraficos ? ['productos_top' => count($datosGraficos['productos_top'] ?? []), 'categorias_vendidas' => count($datosGraficos['categorias_vendidas'] ?? [])] : 'null'));
             
             // Asegurar que las variables existan (por si hay algún error)
             if (!isset($productosPanaderia)) $productosPanaderia = [];
@@ -181,6 +205,9 @@ class MLController {
             error_log("MLController - productosPasteleria count: " . count($productosPasteleria));
             error_log("MLController - productosEnergizantes count: " . count($productosEnergizantes));
             error_log("MLController - productosEmpanadas count: " . count($productosEmpanadas));
+            
+            // Obtener agregados recomendados basados en ventas históricas
+            $agregadosRecomendados = $this->obtenerAgregadosRecomendados($estacion);
             
             // Construir respuesta asegurando que todas las secciones estén presentes
             $response = [
@@ -195,8 +222,10 @@ class MLController {
                 'productos_pasteleria' => $productosPasteleria,
                 'productos_energizantes' => $productosEnergizantes,
                 'productos_empanadas' => $productosEmpanadas,
+                'agregados_recomendados' => $agregadosRecomendados,
                 'graficos' => $datosGraficos,
                 'alertas_stock_ml' => $alertasStockMl,
+                'predicciones_agotamiento' => $prediccionesAgotamiento,
                 'ml_activo' => $this->mlService !== null
             ];
             
@@ -218,20 +247,23 @@ class MLController {
 
     /**
      * Obtener datos para gráficos
+     * @param string|null $estacionFiltro Filtro opcional por estación ('verano', 'otoño', 'invierno', 'primavera')
+     * NOTA: El filtro solo se aplica a "Top 5 Productos" y "Distribución por Categoría"
+     * "Tendencia de Ventas" siempre muestra todos los meses sin filtrar
      */
-    private function obtenerDatosGraficos() {
+    private function obtenerDatosGraficos($estacionFiltro = null) {
         try {
-            // 1. Ventas por estación (últimos 12 meses)
+            // 1. Ventas por estación (últimos 12 meses) - SIN FILTRAR
             $ventasPorEstacion = $this->obtenerVentasTodasEstaciones();
             
-            // 2. Ventas mensuales (últimos 6 meses)
-            $ventasMensuales = $this->obtenerVentasMensuales();
+            // 2. Ventas mensuales (últimos 6 meses) - SIN FILTRAR (siempre muestra todos los meses)
+            $ventasMensuales = $this->obtenerVentasMensuales(null);
             
-            // 3. Productos más vendidos (top 5)
-            $productosTop = $this->obtenerProductosTop();
+            // 3. Productos más vendidos (top 5) - SÍ FILTRAR por estación si se especifica
+            $productosTop = $this->obtenerProductosTop($estacionFiltro);
             
-            // 4. Categorías más vendidas
-            $categoriasVendidas = $this->obtenerCategoriasVendidas();
+            // 4. Categorías más vendidas - SÍ FILTRAR por estación si se especifica
+            $categoriasVendidas = $this->obtenerCategoriasVendidas($estacionFiltro);
             
             return [
                 'ventas_por_estacion' => $ventasPorEstacion,
@@ -310,8 +342,9 @@ class MLController {
 
     /**
      * Obtener ventas mensuales (últimos 6 meses)
+     * @param string|null $estacionFiltro Filtro opcional por estación
      */
-    private function obtenerVentasMensuales() {
+    private function obtenerVentasMensuales($estacionFiltro = null) {
         try {
             // Obtener la fecha más reciente de venta para usar como referencia
             $sqlFechaMax = "SELECT MAX(fecha) as fecha_maxima FROM ventas";
@@ -324,6 +357,16 @@ class MLController {
             
             $fechaMaxima = new DateTime($fechaMaxResult['fecha_maxima']);
             
+            // Construir condición de filtro por estación si se especifica
+            $condicionEstacion = '';
+            $params = [$fechaMaxResult['fecha_maxima']];
+            
+            if ($estacionFiltro) {
+                $meses = $this->obtenerMesesEstacion($estacionFiltro);
+                $mesesStr = implode(',', $meses);
+                $condicionEstacion = " AND MONTH(fecha) IN ($mesesStr)";
+            }
+            
             // Obtener todas las ventas de los últimos 12 meses desde la fecha más reciente
             $sql = "SELECT 
                         DATE_FORMAT(fecha, '%Y-%m') as mes,
@@ -331,11 +374,12 @@ class MLController {
                         COALESCE(SUM(total), 0) as total_ingresos
                     FROM ventas 
                     WHERE fecha >= DATE_SUB(?, INTERVAL 12 MONTH)
+                    $condicionEstacion
                     GROUP BY DATE_FORMAT(fecha, '%Y-%m')
                     ORDER BY mes DESC
                     LIMIT 12";
             
-            $ventasDisponibles = $this->db->fetchAll($sql, [$fechaMaxResult['fecha_maxima']]);
+            $ventasDisponibles = $this->db->fetchAll($sql, $params);
             
             if (empty($ventasDisponibles)) {
                 // Si no hay ventas, crear estructura vacía para los últimos 6 meses
@@ -396,25 +440,63 @@ class MLController {
 
     /**
      * Obtener productos top (más vendidos)
+     * @param string|null $estacionFiltro Filtro opcional por estación
      */
-    private function obtenerProductosTop() {
+    private function obtenerProductosTop($estacionFiltro = null) {
         try {
-            $sql = "SELECT 
-                        p.nombre,
-                        p.categoria,
-                        COALESCE(SUM(dv.cantidad), 0) as total_vendido,
-                        COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0) as ingresos
-               FROM productos p
-               LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
-                    LEFT JOIN ventas v ON dv.id_venta = v.id_venta
-                    WHERE v.fecha >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) OR v.fecha IS NULL
-                    GROUP BY p.id_producto, p.nombre, p.categoria
-                    ORDER BY total_vendido DESC, ingresos DESC
-                    LIMIT 5";
+            // Construir condición de filtro por estación si se especifica
+            if ($estacionFiltro) {
+                $meses = $this->obtenerMesesEstacion($estacionFiltro);
+                $mesesStr = implode(',', $meses);
+                
+                // Si hay filtro de estación, solo considerar ventas de esa estación
+                $sql = "SELECT 
+                            p.nombre,
+                            p.categoria,
+                            COALESCE(SUM(dv.cantidad), 0) as total_vendido,
+                            COALESCE(SUM(dv.subtotal), 0) as ingresos
+                   FROM productos p
+                   INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                        INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                        WHERE v.fecha >= '2024-01-01'
+                        AND MONTH(v.fecha) IN ($mesesStr)
+                        GROUP BY p.id_producto, p.nombre, p.categoria
+                        HAVING total_vendido > 0
+                        ORDER BY total_vendido DESC, ingresos DESC
+                        LIMIT 5";
+            } else {
+                // Sin filtro, mostrar todos los productos
+                $sql = "SELECT 
+                            p.nombre,
+                            p.categoria,
+                            COALESCE(SUM(dv.cantidad), 0) as total_vendido,
+                            COALESCE(SUM(dv.subtotal), 0) as ingresos
+                   FROM productos p
+                   LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                        LEFT JOIN ventas v ON dv.id_venta = v.id_venta
+                        WHERE (v.fecha >= '2024-01-01' OR v.fecha IS NULL)
+                        GROUP BY p.id_producto, p.nombre, p.categoria
+                        ORDER BY total_vendido DESC, ingresos DESC
+                        LIMIT 5";
+            }
+            
+            error_log("MLController - obtenerProductosTop - SQL: " . $sql);
+            error_log("MLController - obtenerProductosTop - Filtro estación: " . ($estacionFiltro ? $estacionFiltro : 'ninguno'));
             
             $productos = $this->db->fetchAll($sql);
             
-            // Si no hay datos de ventas, usar productos activos
+            error_log("MLController - obtenerProductosTop - Productos encontrados: " . count($productos));
+            if (!empty($productos)) {
+                error_log("MLController - Primer producto: " . json_encode($productos[0]));
+            }
+            
+            // Si hay filtro de estación y no hay datos, devolver array vacío (no usar fallback)
+            if ($estacionFiltro && (empty($productos) || (count($productos) == 1 && $productos[0]['total_vendido'] == 0))) {
+                error_log("MLController - No hay datos para la estación: " . $estacionFiltro);
+                return [];
+            }
+            
+            // Si no hay datos de ventas y NO hay filtro, usar productos activos como fallback
             if (empty($productos) || (count($productos) == 1 && $productos[0]['total_vendido'] == 0)) {
                 try {
                     $sql = "SELECT nombre, categoria, 0 as total_vendido, 0 as ingresos 
@@ -435,24 +517,58 @@ class MLController {
 
     /**
      * Obtener categorías más vendidas
+     * @param string|null $estacionFiltro Filtro opcional por estación
      */
-    private function obtenerCategoriasVendidas() {
+    private function obtenerCategoriasVendidas($estacionFiltro = null) {
         try {
-            $sql = "SELECT 
-                        p.categoria,
-                        COUNT(DISTINCT v.id_venta) as total_ventas,
-                        COALESCE(SUM(dv.cantidad), 0) as total_unidades,
-                        COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0) as total_ingresos
-                   FROM productos p
-                    LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
-                    LEFT JOIN ventas v ON dv.id_venta = v.id_venta
-                    WHERE v.fecha >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) OR v.fecha IS NULL
-                    GROUP BY p.categoria
-                    ORDER BY total_ingresos DESC";
+            // Construir condición de filtro por estación si se especifica
+            if ($estacionFiltro) {
+                $meses = $this->obtenerMesesEstacion($estacionFiltro);
+                $mesesStr = implode(',', $meses);
+                
+                // Si hay filtro de estación, solo considerar ventas de esa estación
+                $sql = "SELECT 
+                            p.categoria,
+                            COUNT(DISTINCT v.id_venta) as total_ventas,
+                            COALESCE(SUM(dv.cantidad), 0) as total_unidades,
+                            COALESCE(SUM(dv.subtotal), 0) as total_ingresos
+                       FROM productos p
+                        INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                        INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                        WHERE v.fecha >= '2024-01-01'
+                        AND MONTH(v.fecha) IN ($mesesStr)
+                        GROUP BY p.categoria
+                        HAVING total_ingresos > 0
+                        ORDER BY total_ingresos DESC";
+            } else {
+                // Sin filtro, mostrar todas las categorías
+                $sql = "SELECT 
+                            p.categoria,
+                            COUNT(DISTINCT v.id_venta) as total_ventas,
+                            COALESCE(SUM(dv.cantidad), 0) as total_unidades,
+                            COALESCE(SUM(dv.subtotal), 0) as total_ingresos
+                       FROM productos p
+                        LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                        LEFT JOIN ventas v ON dv.id_venta = v.id_venta
+                        WHERE (v.fecha >= '2024-01-01' OR v.fecha IS NULL)
+                        GROUP BY p.categoria
+                        ORDER BY total_ingresos DESC";
+            }
+            
+            error_log("MLController - obtenerCategoriasVendidas - SQL: " . $sql);
+            error_log("MLController - obtenerCategoriasVendidas - Filtro estación: " . ($estacionFiltro ? $estacionFiltro : 'ninguno'));
             
             $categorias = $this->db->fetchAll($sql);
             
-            // Si no hay datos, usar categorías de productos existentes
+            error_log("MLController - obtenerCategoriasVendidas - Categorías encontradas: " . count($categorias));
+            
+            // Si hay filtro de estación y no hay datos, devolver array vacío (no usar fallback)
+            if ($estacionFiltro && empty($categorias)) {
+                error_log("MLController - No hay categorías para la estación: " . $estacionFiltro);
+                return [];
+            }
+            
+            // Si no hay datos y NO hay filtro, usar categorías de productos existentes
             if (empty($categorias)) {
                 try {
                     $sql = "SELECT DISTINCT categoria, 0 as total_ventas, 0 as total_unidades, 0 as total_ingresos 
@@ -609,7 +725,7 @@ class MLController {
                             SUM(total) as total_ingresos,
                             AVG(total) as promedio_venta
                         FROM ventas 
-                        WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                        WHERE fecha >= '2024-01-01'";
                 $datos = $this->db->fetch($sql);
                 
                 if ($datos && $datos['total_ventas'] > 0) {
@@ -702,7 +818,7 @@ class MLController {
                             AND p.stock > 0 
                             AND p.destacado = 1
                             AND p.categoria IN ($categoriasStr)
-                            AND (v.fecha >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) OR v.fecha IS NULL)
+                            AND (v.fecha >= '2024-01-01' OR v.fecha IS NULL)
                             GROUP BY p.id_producto, p.nombre, p.categoria, p.precio, p.stock, p.destacado
                             ORDER BY p.destacado DESC, total_vendido DESC
                             LIMIT 5";
@@ -730,12 +846,12 @@ class MLController {
                         p.categoria,
                         p.precio,
                         COALESCE(SUM(dv.cantidad), 0) as total_vendido,
-                        COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0) as ingresos_totales
+                        COALESCE(SUM(dv.subtotal), 0) as ingresos_totales
                     FROM productos p
                     LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
                     LEFT JOIN ventas v ON dv.id_venta = v.id_venta
                     WHERE p.categoria IN ($categoriasStr)
-                    AND (v.fecha >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) OR v.fecha IS NULL)
+                    AND (v.fecha >= '2024-01-01' OR v.fecha IS NULL)
                     GROUP BY p.id_producto, p.nombre, p.categoria, p.precio
                     ORDER BY total_vendido DESC, ingresos_totales DESC
                     LIMIT 10";
@@ -850,6 +966,60 @@ class MLController {
     }
 
     /**
+     * Aplicar ley del redondeo chilena a un precio
+     * Reglas:
+     * - Si el último dígito es 0-4: redondear hacia abajo (a 0)
+     * - Si el último dígito es 5-9: redondear hacia arriba (a 0 del siguiente dígito)
+     * - Si el precio es menor a 50, mantener mínimo 50
+     * - Evitar precios que terminen en 99, preferir 90 o 00
+     * - Los precios en Chile suelen terminar en 0, 60, o 90 (no en 99)
+     * 
+     * Ejemplos:
+     * - 2242 → 2240 (último dígito 2, redondea hacia abajo: 42 → 40)
+     * - 2245 → 2250 (último dígito 5, redondea hacia arriba: 45 → 50)
+     * - 2247 → 2250 (último dígito 7, redondea hacia arriba: 47 → 50)
+     * - 2596 → 2600 (último dígito 6, redondea hacia arriba: 96 → 00)
+     * - 2999 → 3000 (evita 99, redondea a 00)
+     * - 2991 → 2990 (evita 91, redondea a 90)
+     * - 2965 → 2960 (redondea a 60)
+     */
+    private function aplicarRedondeoChileno($precio) {
+        $precio = floatval($precio);
+        
+        // Si el precio es menor a 50, mantener mínimo 50
+        if ($precio < 50) {
+            return 50;
+        }
+        
+        // Obtener el último dígito (unidades)
+        $ultimoDigito = intval($precio) % 10;
+        
+        // Si termina en 0-4, redondear hacia abajo (a 0)
+        // Ejemplo: 2242 → 2240 (el 2 se redondea a 0)
+        if ($ultimoDigito >= 0 && $ultimoDigito <= 4) {
+            $redondeado = floor($precio / 10) * 10;
+        } else {
+            // Si termina en 5-9, redondear hacia arriba (a 0 del siguiente dígito)
+            // Ejemplo: 2245 → 2250 (el 5 se redondea a 0, sube la decena)
+            $redondeado = ceil($precio / 10) * 10;
+        }
+        
+        // Verificar si el precio redondeado termina en 99
+        // Si es así, ajustar para evitar 99 (preferir 90 o 00)
+        $ultimosDosDigitos = intval($redondeado) % 100;
+        
+        if ($ultimosDosDigitos == 99) {
+            // Si termina en 99, redondear al siguiente múltiplo de 10 (00)
+            $redondeado = ceil($redondeado / 10) * 10;
+        } elseif ($ultimosDosDigitos >= 91 && $ultimosDosDigitos <= 98) {
+            // Si está entre 91-98, redondear hacia abajo a 90
+            $redondeado = floor($redondeado / 100) * 100 + 90;
+        }
+        
+        return intval($redondeado);
+    }
+
+    /**
      * Obtener recomendaciones de precios
      */
     private function obtenerRecomendacionesPrecios() {
@@ -863,12 +1033,12 @@ class MLController {
                         p.precio,
                         p.categoria,
                         COALESCE(SUM(dv.cantidad), 0) as unidades_vendidas,
-                        COALESCE(SUM(dv.cantidad * dv.precio_unitario), 0) as ingresos_totales,
+                        COALESCE(SUM(dv.subtotal), 0) as ingresos_totales,
                         COALESCE(AVG(dv.cantidad), 0) as promedio_venta
                            FROM productos p
                            LEFT JOIN detalle_venta dv ON p.id_producto = dv.id_producto
                            LEFT JOIN ventas v ON dv.id_venta = v.id_venta
-                    WHERE (v.fecha >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) OR v.fecha IS NULL)
+                    WHERE (v.fecha >= '2024-01-01' OR v.fecha IS NULL)
                           GROUP BY p.id_producto, p.nombre, p.precio, p.categoria
                     HAVING unidades_vendidas > 0 OR unidades_vendidas = 0
                           ORDER BY unidades_vendidas DESC, ingresos_totales DESC
@@ -914,7 +1084,7 @@ class MLController {
                 
                 // Recomendación 1: Producto con precio muy alto comparado con su categoría
                 if ($precioPromedioCategoria > 0 && $precio > ($precioPromedioCategoria * 1.3)) {
-                    $precioRecomendado = round($precioPromedioCategoria * 1.1, 0);
+                    $precioRecomendado = $this->aplicarRedondeoChileno($precioPromedioCategoria * 1.1);
                 $recomendaciones[] = [
                         'tipo' => 'precio',
                         'nivel' => 'info',
@@ -937,7 +1107,7 @@ class MLController {
                 
                 // Recomendación 3: Producto con muchas ventas - podría aumentar precio
                 if ($ventas > 10 && $precioPromedioCategoria > 0 && $precio < ($precioPromedioCategoria * 0.9)) {
-                    $precioRecomendado = round($precioPromedioCategoria * 0.95, 0);
+                    $precioRecomendado = $this->aplicarRedondeoChileno($precioPromedioCategoria * 0.95);
                 $recomendaciones[] = [
                         'tipo' => 'precio',
                         'nivel' => 'info',
@@ -1126,10 +1296,12 @@ class MLController {
      */
     private function obtenerProductosPorCategoria(array $categorias, string $tipo, int $limite) {
         try {
-            // Construir condiciones LIKE para cada categoría (más flexible)
+            // Construir condiciones exactas para cada categoría
             $condiciones = [];
             foreach ($categorias as $categoria) {
-                $condiciones[] = "p.categoria LIKE '%" . addslashes($categoria) . "%'";
+                $categoriaEscapada = addslashes($categoria);
+                // Buscar exacto primero, luego LIKE como fallback
+                $condiciones[] = "(p.categoria = '" . $categoriaEscapada . "' OR p.categoria LIKE '%" . $categoriaEscapada . "%')";
             }
             $condicionesStr = implode(' OR ', $condiciones);
             
@@ -1185,6 +1357,301 @@ class MLController {
     }
 
     /**
+     * Predicción de agotamiento de insumo o producto específico
+     */
+    public function prediccionAgotamiento() {
+        try {
+            $id_insumo = isset($_GET['id_insumo']) ? intval($_GET['id_insumo']) : null;
+            $id_producto = isset($_GET['id_producto']) ? intval($_GET['id_producto']) : null;
+            
+            if (!$id_insumo && !$id_producto) {
+                $this->sendResponse(400, [
+                    'error' => 'Debe proporcionar id_insumo o id_producto'
+                ]);
+                return;
+            }
+            
+            if ($this->mlService) {
+                $prediccion = $this->mlService->predecirAgotamiento($id_insumo, $id_producto);
+                
+                if ($prediccion) {
+                    $this->sendResponse(200, [
+                        'success' => true,
+                        'prediccion' => $prediccion
+                    ]);
+                } else {
+                    $this->sendResponse(404, [
+                        'error' => 'No se pudo generar la predicción'
+                    ]);
+                }
+            } else {
+                $this->sendResponse(503, [
+                    'error' => 'Servicio de ML no disponible'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("Error en prediccionAgotamiento: " . $e->getMessage());
+            $this->sendResponse(500, [
+                'error' => 'Error al calcular predicción de agotamiento',
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Obtener todas las predicciones de stock crítico
+     */
+    public function prediccionesStock() {
+        try {
+            $topN = isset($_GET['top']) ? intval($_GET['top']) : 10;
+            
+            if ($this->mlService) {
+                $predicciones = $this->mlService->obtenerPrediccionesAgotamientoInsumos($topN);
+                
+                $this->sendResponse(200, [
+                    'success' => true,
+                    'predicciones' => $predicciones,
+                    'total' => count($predicciones)
+                ]);
+            } else {
+                $this->sendResponse(503, [
+                    'error' => 'Servicio de ML no disponible'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("Error en prediccionesStock: " . $e->getMessage());
+            $this->sendResponse(500, [
+                'error' => 'Error al obtener predicciones de stock',
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Obtener productos más vendidos durante un período de meses
+     * @param int $meses Número de meses hacia atrás desde hoy (por defecto 12)
+     */
+    public function productosMasVendidosAnuales() {
+        try {
+            // Obtener parámetro de meses (por defecto 12 meses = 1 año)
+            $meses = isset($_GET['meses']) ? intval($_GET['meses']) : 12;
+            
+            // Validar que sea un número positivo
+            if ($meses <= 0) {
+                $meses = 12;
+            }
+            
+            // Obtener la fecha máxima y mínima de ventas en la BD (solo fecha, sin hora)
+            $sqlFechas = "SELECT MAX(DATE(fecha)) as fecha_maxima, MIN(DATE(fecha)) as fecha_minima FROM ventas";
+            $fechasResult = $this->db->fetch($sqlFechas);
+            $fechaMaximaBD = $fechasResult && $fechasResult['fecha_maxima'] 
+                ? $fechasResult['fecha_maxima'] 
+                : null;
+            $fechaMinimaBD = $fechasResult && $fechasResult['fecha_minima'] 
+                ? $fechasResult['fecha_minima'] 
+                : null;
+            
+            // Usar la fecha más reciente entre la BD y la fecha actual
+            $fechaActual = date('Y-m-d');
+            $fechaFin = $fechaMaximaBD && $fechaMaximaBD > $fechaActual 
+                ? $fechaMaximaBD 
+                : $fechaActual;
+            
+            // Calcular fecha de inicio basada en los meses solicitados desde la fecha fin
+            $fechaInicio = date('Y-m-d', strtotime("{$fechaFin} -{$meses} months"));
+            
+            // Si no hay fecha máxima en BD, usar rango desde 2024 o fecha mínima
+            if (!$fechaMaximaBD) {
+                // Si el rango es menor a 12 meses, usar fecha actual
+                if ($meses <= 12) {
+                    $fechaFin = $fechaActual;
+                    $fechaInicio = date('Y-m-d', strtotime("-{$meses} months"));
+                } else {
+                    // Para rangos mayores, incluir desde 2024 o fecha mínima
+                    $fechaFin = $fechaActual;
+                    $fechaInicio = $fechaMinimaBD && $fechaMinimaBD < '2024-01-01' 
+                        ? $fechaMinimaBD 
+                        : '2024-01-01';
+                }
+            } else {
+                // Si hay fecha mínima y el rango calculado es anterior a ella, ajustar
+                if ($fechaMinimaBD && $fechaInicio < $fechaMinimaBD) {
+                    // Ajustar para que el rango sea desde la fecha mínima hasta la máxima
+                    // pero mantener la proporción de meses si es posible
+                    $fechaInicio = $fechaMinimaBD;
+                }
+            }
+            
+            error_log("MLController - productosMasVendidosAnuales - Meses: {$meses}, Desde: {$fechaInicio}, Hasta: {$fechaFin}");
+            error_log("MLController - Fecha máxima en BD: " . ($fechaMaximaBD ?? 'N/A'));
+            error_log("MLController - Fecha mínima en BD: " . ($fechaMinimaBD ?? 'N/A'));
+            
+            // Verificar si hay ventas en el rango antes de consultar productos
+            $sqlVerificarVentas = "SELECT COUNT(*) as total FROM ventas WHERE DATE(fecha) >= ? AND DATE(fecha) <= ?";
+            $verificarVentas = $this->db->fetch($sqlVerificarVentas, [$fechaInicio, $fechaFin]);
+            $totalVentasRango = $verificarVentas['total'] ?? 0;
+            error_log("MLController - Ventas en rango ({$fechaInicio} a {$fechaFin}): {$totalVentasRango}");
+            
+            // Si no hay ventas en el rango, intentar con todos los datos disponibles
+            if ($totalVentasRango == 0) {
+                error_log("MLController - No hay ventas en el rango solicitado ({$fechaInicio} a {$fechaFin}), buscando en todos los datos disponibles");
+                
+                // Primero verificar si hay ventas en total
+                $sqlTotalVentas = "SELECT COUNT(*) as total FROM ventas";
+                $totalVentas = $this->db->fetch($sqlTotalVentas);
+                $totalVentasBD = $totalVentas['total'] ?? 0;
+                
+                if ($totalVentasBD > 0) {
+                    error_log("MLController - Hay {$totalVentasBD} ventas en total, pero ninguna en el rango solicitado. Usando todos los datos.");
+                    $sql = "SELECT 
+                                p.id_producto,
+                                p.nombre,
+                                p.categoria,
+                                COALESCE(SUM(dv.cantidad), 0) as total_vendido,
+                                COALESCE(SUM(dv.subtotal), 0) as ingresos,
+                                COUNT(DISTINCT v.id_venta) as num_ventas,
+                                ROUND(COALESCE(SUM(dv.cantidad), 0) / NULLIF(COUNT(DISTINCT DATE(v.fecha)), 0), 2) as promedio_diario
+                            FROM productos p
+                            INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                            INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                            WHERE p.activo = 1
+                            GROUP BY p.id_producto, p.nombre, p.categoria
+                            HAVING total_vendido > 0
+                            ORDER BY total_vendido DESC, ingresos DESC
+                            LIMIT 10";
+                    $productos = $this->db->fetchAll($sql);
+                    // Actualizar fechas para reflejar el rango real usado
+                    if ($fechaMinimaBD && $fechaMaximaBD) {
+                        $fechaInicio = $fechaMinimaBD;
+                        $fechaFin = $fechaMaximaBD;
+                    }
+                } else {
+                    error_log("MLController - No hay ventas en la base de datos");
+                    $productos = [];
+                }
+            } else {
+                // Primero intentar con productos activos
+                $sql = "SELECT 
+                            p.id_producto,
+                            p.nombre,
+                            p.categoria,
+                            COALESCE(SUM(dv.cantidad), 0) as total_vendido,
+                            COALESCE(SUM(dv.subtotal), 0) as ingresos,
+                            COUNT(DISTINCT v.id_venta) as num_ventas,
+                            ROUND(COALESCE(SUM(dv.cantidad), 0) / NULLIF(COUNT(DISTINCT DATE(v.fecha)), 0), 2) as promedio_diario
+                        FROM productos p
+                        INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                        INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                        WHERE DATE(v.fecha) >= ? AND DATE(v.fecha) <= ?
+                        AND p.activo = 1
+                        GROUP BY p.id_producto, p.nombre, p.categoria
+                        HAVING total_vendido > 0
+                        ORDER BY total_vendido DESC, ingresos DESC
+                        LIMIT 10";
+                $productos = $this->db->fetchAll($sql, [$fechaInicio, $fechaFin]);
+                
+                // Si no hay resultados con productos activos, intentar sin el filtro de activo
+                if (count($productos) == 0) {
+                    error_log("MLController - No se encontraron productos activos, intentando sin filtro de activo");
+                    $sql = "SELECT 
+                                p.id_producto,
+                                p.nombre,
+                                p.categoria,
+                                COALESCE(SUM(dv.cantidad), 0) as total_vendido,
+                                COALESCE(SUM(dv.subtotal), 0) as ingresos,
+                                COUNT(DISTINCT v.id_venta) as num_ventas,
+                                ROUND(COALESCE(SUM(dv.cantidad), 0) / NULLIF(COUNT(DISTINCT DATE(v.fecha)), 0), 2) as promedio_diario
+                            FROM productos p
+                            INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                            INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                            WHERE DATE(v.fecha) >= ? AND DATE(v.fecha) <= ?
+                            GROUP BY p.id_producto, p.nombre, p.categoria
+                            HAVING total_vendido > 0
+                            ORDER BY total_vendido DESC, ingresos DESC
+                            LIMIT 10";
+                    $productos = $this->db->fetchAll($sql, [$fechaInicio, $fechaFin]);
+                }
+            }
+            
+            error_log("MLController - Productos encontrados: " . count($productos));
+            if (count($productos) > 0) {
+                error_log("MLController - Primer producto: " . json_encode($productos[0]));
+            } else {
+                error_log("MLController - ⚠️ No se encontraron productos con ventas en el rango especificado");
+                // Verificar si hay productos activos en la BD
+                $sqlProductosActivos = "SELECT COUNT(*) as total FROM productos WHERE activo = 1";
+                $productosActivos = $this->db->fetch($sqlProductosActivos);
+                error_log("MLController - Productos activos en BD: " . ($productosActivos['total'] ?? 0));
+                
+                // Verificar si hay ventas en la BD (sin filtro de fecha)
+                $sqlVentasTotales = "SELECT COUNT(*) as total FROM ventas";
+                $ventasTotales = $this->db->fetch($sqlVentasTotales);
+                error_log("MLController - Total de ventas en BD: " . ($ventasTotales['total'] ?? 0));
+            }
+            
+            // Obtener también distribución por categoría
+            if ($totalVentasRango == 0) {
+                // Si no hay ventas en el rango, usar todos los datos
+                $sqlCategorias = "SELECT 
+                                    p.categoria,
+                                    COUNT(DISTINCT v.id_venta) as total_ventas,
+                                    COALESCE(SUM(dv.cantidad), 0) as total_unidades,
+                                    COALESCE(SUM(dv.subtotal), 0) as total_ingresos
+                                FROM productos p
+                                INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                                INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                                WHERE p.activo = 1
+                                GROUP BY p.categoria
+                                HAVING total_ingresos > 0
+                                ORDER BY total_ingresos DESC";
+                $categorias = $this->db->fetchAll($sqlCategorias);
+            } else {
+                $sqlCategorias = "SELECT 
+                                    p.categoria,
+                                    COUNT(DISTINCT v.id_venta) as total_ventas,
+                                    COALESCE(SUM(dv.cantidad), 0) as total_unidades,
+                                    COALESCE(SUM(dv.subtotal), 0) as total_ingresos
+                                FROM productos p
+                                INNER JOIN detalle_venta dv ON p.id_producto = dv.id_producto
+                                INNER JOIN ventas v ON dv.id_venta = v.id_venta
+                                WHERE DATE(v.fecha) >= ? AND DATE(v.fecha) <= ?
+                                AND p.activo = 1
+                                GROUP BY p.categoria
+                                HAVING total_ingresos > 0
+                                ORDER BY total_ingresos DESC";
+                $categorias = $this->db->fetchAll($sqlCategorias, [$fechaInicio, $fechaFin]);
+            }
+            
+            error_log("MLController - Categorías encontradas: " . count($categorias));
+            
+            // Asegurar que productos y categorías sean arrays
+            $productos = is_array($productos) ? $productos : [];
+            $categorias = is_array($categorias) ? $categorias : [];
+            
+            $this->sendResponse(200, [
+                'success' => true,
+                'productos' => $productos,
+                'categorias' => $categorias,
+                'meses' => $meses,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+                'fecha_maxima_bd' => $fechaMaximaBD ?? null,
+                'fecha_minima_bd' => $fechaMinimaBD ?? null,
+                'total_productos' => count($productos),
+                'total_ventas_rango' => $totalVentasRango,
+                'hay_datos' => count($productos) > 0
+            ]);
+        } catch (Exception $e) {
+            error_log("Error en productosMasVendidosAnuales: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            $this->sendResponse(500, [
+                'error' => 'Error al obtener productos más vendidos del año',
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Formatear productos para asegurar estructura correcta
      */
     private function formatearProductos(array $productos) {
@@ -1201,6 +1668,174 @@ class MLController {
             ];
         }
         return $formateados;
+    }
+
+    /**
+     * Obtener agregados recomendados basados en ventas históricas y estación
+     * @param string $estacion Estación actual ('verano', 'otoño', 'invierno', 'primavera')
+     * @return array Lista de agregados recomendados
+     */
+    private function obtenerAgregadosRecomendados($estacion = null) {
+        try {
+            // Verificar si la tabla de agregados existe
+            try {
+                $sqlCheck = "SHOW TABLES LIKE 'agregados'";
+                $tableExists = $this->db->fetch($sqlCheck);
+            } catch (Exception $e) {
+                error_log("⚠️ MLController - Error verificando tabla agregados: " . $e->getMessage());
+                $tableExists = false;
+            }
+            
+            if (!$tableExists) {
+                error_log("⚠️ MLController - Tabla 'agregados' no existe, retornando agregados por defecto");
+                return $this->obtenerAgregadosPorDefecto($estacion);
+            }
+            
+            error_log("✅ MLController - Tabla 'agregados' existe, obteniendo agregados recomendados");
+
+            // Obtener agregados más vendidos basados en detalle_venta_agregado
+            $sql = "
+                SELECT 
+                    a.id_agregado,
+                    a.nombre,
+                    a.descripcion,
+                    a.precio_adicional,
+                    a.categoria,
+                    COUNT(dva.id_detalle_venta_agregado) as total_veces_vendido
+                FROM agregados a
+                LEFT JOIN detalle_venta_agregado dva ON a.id_agregado = dva.id_agregado
+                LEFT JOIN detalle_venta dv ON dva.id_detalle_venta = dv.id_detalle_venta
+                LEFT JOIN ventas v ON dv.id_venta = v.id_venta
+                WHERE a.activo = 1
+            ";
+
+            // Filtrar por estación si se proporciona
+            if ($estacion) {
+                $mesEstacion = $this->obtenerMesesEstacion($estacion);
+                if (!empty($mesEstacion)) {
+                    $placeholders = implode(',', array_fill(0, count($mesEstacion), '?'));
+                    $sql .= " AND MONTH(v.fecha) IN ($placeholders)";
+                    $params = $mesEstacion;
+                } else {
+                    $params = [];
+                }
+            } else {
+                $params = [];
+            }
+
+            $sql .= "
+                GROUP BY a.id_agregado, a.nombre, a.descripcion, a.precio_adicional, a.categoria
+                ORDER BY total_veces_vendido DESC, a.nombre ASC
+                LIMIT 8
+            ";
+
+            $agregados = $this->db->fetchAll($sql, $params);
+
+            // Si no hay agregados vendidos, usar agregados por defecto basados en estación
+            if (empty($agregados)) {
+                error_log("⚠️ MLController - No hay agregados vendidos, usando agregados por defecto");
+                return $this->obtenerAgregadosPorDefecto($estacion);
+            }
+
+            error_log("✅ MLController - Se encontraron " . count($agregados) . " agregados recomendados");
+
+            // Formatear agregados
+            $agregadosFormateados = [];
+            foreach ($agregados as $agregado) {
+                $agregadosFormateados[] = [
+                    'id_agregado' => intval($agregado['id_agregado']),
+                    'nombre' => $agregado['nombre'],
+                    'descripcion' => $agregado['descripcion'] ?? '',
+                    'precio_adicional' => floatval($agregado['precio_adicional']),
+                    'categoria' => $agregado['categoria'] ?? 'Sabor',
+                    'total_veces_vendido' => intval($agregado['total_veces_vendido'] ?? 0)
+                ];
+            }
+
+            error_log("✅ MLController - Agregados formateados: " . json_encode(array_column($agregadosFormateados, 'nombre')));
+            return $agregadosFormateados;
+        } catch (Exception $e) {
+            error_log("Error obteniendo agregados recomendados: " . $e->getMessage());
+            return $this->obtenerAgregadosPorDefecto($estacion);
+        }
+    }
+
+    /**
+     * Obtener agregados por defecto basados en estación
+     * @param string|null $estacion Estación actual
+     * @return array Lista de agregados por defecto
+     */
+    private function obtenerAgregadosPorDefecto($estacion = null) {
+        try {
+            error_log("🔍 MLController - Obteniendo agregados por defecto para estación: " . ($estacion ?? 'ninguna'));
+            
+            $sql = "SELECT id_agregado, nombre, descripcion, precio_adicional, categoria 
+                    FROM agregados 
+                    WHERE activo = 1";
+            
+            $params = [];
+            
+            // Agregar filtro por categoría según estación
+            if ($estacion) {
+                switch ($estacion) {
+                    case 'verano':
+                        // Verano: sabores refrescantes
+                        $sql .= " AND categoria IN ('Sabor', 'Topping') AND nombre IN ('Menta', 'Coco', 'Frambuesa', 'Crema Batida')";
+                        break;
+                    case 'invierno':
+                        // Invierno: sabores cálidos
+                        $sql .= " AND categoria IN ('Sabor', 'Especia') AND nombre IN ('Canela', 'Chocolate', 'Caramelo', 'Avellana')";
+                        break;
+                    case 'otoño':
+                        // Otoño: sabores especiados
+                        $sql .= " AND categoria IN ('Especia', 'Sabor') AND nombre IN ('Canela', 'Cardamomo', 'Vainilla', 'Nuez Moscada')";
+                        break;
+                    case 'primavera':
+                        // Primavera: sabores balanceados
+                        $sql .= " AND categoria IN ('Sabor', 'Topping') AND nombre IN ('Vainilla', 'Lavanda', 'Frambuesa', 'Chocolate')";
+                        break;
+                }
+            }
+            
+            $sql .= " ORDER BY categoria, nombre LIMIT 8";
+            
+            error_log("🔍 MLController - SQL para agregados por defecto: " . $sql);
+            $agregados = $this->db->fetchAll($sql, $params);
+            error_log("🔍 MLController - Agregados encontrados: " . count($agregados));
+            
+            // Si no hay resultados, obtener los primeros 8 agregados activos
+            if (empty($agregados)) {
+                error_log("⚠️ MLController - No se encontraron agregados con filtro de estación, obteniendo todos los activos");
+                $sql = "SELECT id_agregado, nombre, descripcion, precio_adicional, categoria 
+                        FROM agregados 
+                        WHERE activo = 1 
+                        ORDER BY categoria, nombre 
+                        LIMIT 8";
+                $agregados = $this->db->fetchAll($sql);
+                error_log("🔍 MLController - Agregados sin filtro: " . count($agregados));
+            }
+            
+            $agregadosFormateados = [];
+            foreach ($agregados as $agregado) {
+                $agregadosFormateados[] = [
+                    'id_agregado' => intval($agregado['id_agregado']),
+                    'nombre' => $agregado['nombre'],
+                    'descripcion' => $agregado['descripcion'] ?? '',
+                    'precio_adicional' => floatval($agregado['precio_adicional']),
+                    'categoria' => $agregado['categoria'] ?? 'Sabor',
+                    'total_veces_vendido' => 0
+                ];
+            }
+            
+            error_log("✅ MLController - Agregados por defecto formateados: " . count($agregadosFormateados));
+            error_log("📋 Nombres: " . json_encode(array_column($agregadosFormateados, 'nombre')));
+            return $agregadosFormateados;
+        } catch (Exception $e) {
+            error_log("❌ Error obteniendo agregados por defecto: " . $e->getMessage());
+            error_log("❌ Stack trace: " . $e->getTraceAsString());
+            // Retornar array vacío en caso de error
+            return [];
+        }
     }
 }
 ?>

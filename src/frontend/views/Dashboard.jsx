@@ -63,12 +63,15 @@ const Dashboard = () => {
   // Estado para filtro de categoría del gráfico único
   const [categoriaFiltroGrafico, setCategoriaFiltroGrafico] = useState('todas'); // 'todas', 'cafes', 'dulces', 'panaderia', 'pasteleria', 'energizantes', 'empanadas'
   
-  // Estado para filtro de estación del gráfico
+  // Estado para filtro de estación del gráfico único
   const [estacionFiltroGrafico, setEstacionFiltroGrafico] = useState('todas'); // 'todas', 'verano', 'otoño', 'invierno', 'primavera'
+  
+  // Estado para filtro de estación de los gráficos principales (Tendencia, Top 5, Distribución)
+  const [estacionFiltroGraficosPrincipales, setEstacionFiltroGraficosPrincipales] = useState('todas'); // 'todas', 'verano', 'otoño', 'invierno', 'primavera'
   
   // Estado para filtro de categoría de sugerencias ML
   // Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas
-  const [categoriaFiltroSugerencias, setCategoriaFiltroSugerencias] = useState('pasteleria');
+  const [categoriaFiltroSugerencias, setCategoriaFiltroSugerencias] = useState('cafe');
   
   // Estado para gráfico comparativo de meses
   const fechaActual = new Date();
@@ -85,6 +88,32 @@ const Dashboard = () => {
   // Estado para alertas de stock
   const [alertasStock, setAlertasStock] = useState([]);
   const [verificandoStock, setVerificandoStock] = useState(false);
+  
+  // Estado para productos más vendidos durante todo el año
+  const [productosAnuales, setProductosAnuales] = useState([]);
+  const [categoriasAnuales, setCategoriasAnuales] = useState([]);
+  const [cargandoAnuales, setCargandoAnuales] = useState(false);
+  const [mesesFiltroAnuales, setMesesFiltroAnuales] = useState(3); // Por defecto 3 meses
+
+  /**
+   * Función helper para formatear un mes en formato YYYY-MM a nombre de mes en español
+   * Evita problemas de zona horaria usando directamente el string
+   */
+  const formatearMes = (mesAno) => {
+    if (!mesAno || !mesAno.includes('-')) {
+      return 'Mes';
+    }
+    const [ano, mes] = mesAno.split('-');
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const indiceMes = parseInt(mes, 10) - 1;
+    if (indiceMes >= 0 && indiceMes < 12) {
+      return `${meses[indiceMes]} de ${ano}`;
+    }
+    return mesAno;
+  };
 
   /**
    * Función para actualizar todos los datos del dashboard
@@ -179,10 +208,13 @@ const Dashboard = () => {
         ventasHoy: parseFloat(backendData.total_ventas_hoy) || 0, // Total de montos del día
         productoMasVendido: backendData.producto_mas_vendido || 'N/A', // Se actualizará con ML después
         insumosBajos: (backendData.insumos_bajos || []).map(insumo => ({
-          nombre: insumo.nombre || '',
-          cantidad: insumo.stock || 0,
-          stockMinimo: insumo.alerta_stock || 0
-        })),
+          nombre: insumo.nombre || insumo.nombre_insumo || 'Sin nombre',
+          cantidad: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stock: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stockMinimo: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          alerta_stock: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          unidad: insumo.unidad || ''
+        })).filter(insumo => insumo.stock <= insumo.stockMinimo),
         totalVentas: parseInt(backendData.ventas_hoy) || 0, // Número de transacciones del día
         clientesNuevos: parseInt(backendData.clientes_nuevos) || 0
       });
@@ -194,6 +226,23 @@ const Dashboard = () => {
       });
       
       console.log('✅ Datos del dashboard cargados correctamente:', backendData);
+      
+      // Actualizar alertas de stock si hay insumos bajos
+      if (backendData.insumos_bajos && backendData.insumos_bajos.length > 0) {
+        const alertasMapeadas = backendData.insumos_bajos.map(insumo => ({
+          nombre: insumo.nombre || insumo.nombre_insumo || 'Sin nombre',
+          cantidad: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stock: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stockMinimo: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          alerta_stock: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          unidad: insumo.unidad || ''
+        })).filter(insumo => insumo.stock <= insumo.stockMinimo);
+        
+        if (alertasMapeadas.length > 0) {
+          setAlertasStock(alertasMapeadas);
+          console.log(`✅ ${alertasMapeadas.length} insumos con stock bajo actualizados desde cargarDatos`);
+        }
+      }
     } catch (error) {
       console.error('❌ Error al cargar datos del dashboard:', error);
       console.error('❌ Tipo de error:', error.name);
@@ -320,13 +369,20 @@ const Dashboard = () => {
   /**
    * Función para cargar predicciones de Machine Learning
    */
-  const cargarPrediccionesML = async () => {
+  const cargarPrediccionesML = async (estacionFiltro = 'todas') => {
     try {
       setCargandoML(true);
+      console.log('🔄 Cargando predicciones ML con filtro:', estacionFiltro);
       
-      // Cargar predicción por estación
+      // Cargar predicción por estación (con filtro opcional)
       try {
-        const responsePred = await apiGet(API_CONFIG.ML.PREDICCION_ESTACION);
+        const url = estacionFiltro !== 'todas' 
+          ? `${API_CONFIG.ML.PREDICCION_ESTACION}?estacion=${estacionFiltro}`
+          : API_CONFIG.ML.PREDICCION_ESTACION;
+        console.log('📍 URL ML:', url);
+        const responsePred = await apiGet(url);
+        console.log('📥 Respuesta ML:', responsePred.data);
+        
         if (responsePred.data && responsePred.data.success) {
           setPrediccionEstacion(responsePred.data);
           setProductosEstacion(responsePred.data.productos_recomendados || []);
@@ -336,7 +392,21 @@ const Dashboard = () => {
           setProductosPasteleriaEstacion(responsePred.data.productos_pasteleria || []);
           setProductosEnergizantesEstacion(responsePred.data.productos_energizantes || []);
           setProductosEmpanadasEstacion(responsePred.data.productos_empanadas || []);
-          setDatosGraficos(responsePred.data.graficos || null);
+          
+          // Actualizar gráficos con los nuevos datos - FORZAR ACTUALIZACIÓN
+          if (responsePred.data.graficos) {
+            console.log('📊 Datos de gráficos recibidos:', responsePred.data.graficos);
+            console.log('📊 Productos Top:', responsePred.data.graficos.productos_top);
+            console.log('📊 Categorías:', responsePred.data.graficos.categorias_vendidas);
+            // Forzar actualización creando un nuevo objeto
+            setDatosGraficos({
+              ...responsePred.data.graficos,
+              _timestamp: Date.now() // Agregar timestamp para forzar re-render
+            });
+          } else {
+            console.warn('⚠️ No se recibieron datos de gráficos');
+            setDatosGraficos(null);
+          }
           
           // ACTUALIZAR PRODUCTO ESTRELLA desde ML
           // El producto estrella es el primero de los productos recomendados por ML
@@ -432,23 +502,124 @@ const Dashboard = () => {
       // Obtener datos del dashboard que incluyen insumos bajos
       const response = await apiGet(API_CONFIG.DASHBOARD.ADMIN);
       
-      if (response.data && response.data.success && response.data.data) {
-        const insumosBajos = response.data.data.insumos_bajos || [];
+      console.log('🔍 Verificando stock bajo - Respuesta recibida:', response);
+      
+      if (response && response.data) {
+        const responseData = response.data;
         
-        if (insumosBajos.length > 0) {
-          setAlertasStock(insumosBajos);
-          
-          // Mostrar notificación si hay nuevos insumos bajos
-          console.log(`⚠️ ${insumosBajos.length} insumos con stock bajo detectados`);
+        // Verificar diferentes formatos de respuesta
+        let insumosBajos = [];
+        if (responseData.success && responseData.data && responseData.data.insumos_bajos) {
+          insumosBajos = responseData.data.insumos_bajos;
+        } else if (responseData.insumos_bajos) {
+          insumosBajos = responseData.insumos_bajos;
+        }
+        
+        console.log('📊 Insumos bajos recibidos del backend:', insumosBajos);
+        
+        // Mapear correctamente los datos
+        const alertasMapeadas = insumosBajos.map(insumo => ({
+          nombre: insumo.nombre || insumo.nombre_insumo || 'Sin nombre',
+          cantidad: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stock: parseFloat(insumo.stock || insumo.cantidad || 0),
+          stockMinimo: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          alerta_stock: parseFloat(insumo.alerta_stock || insumo.stockMinimo || 0),
+          unidad: insumo.unidad || ''
+        })).filter(insumo => insumo.stock <= insumo.stockMinimo); // Solo los que realmente están bajo el mínimo
+        
+        console.log('⚠️ Alertas mapeadas:', alertasMapeadas);
+        console.log(`⚠️ Total de insumos con stock bajo: ${alertasMapeadas.length}`);
+        
+        if (alertasMapeadas.length > 0) {
+          setAlertasStock(alertasMapeadas);
+          console.log(`✅ ${alertasMapeadas.length} insumos con stock bajo detectados`);
         } else {
           setAlertasStock([]);
+          console.log('✅ No hay insumos con stock bajo');
         }
+      } else {
+        console.warn('⚠️ Respuesta del dashboard no tiene el formato esperado');
+        setAlertasStock([]);
       }
       
       setVerificandoStock(false);
     } catch (error) {
-      console.error('Error verificando stock:', error);
+      console.error('❌ Error verificando stock:', error);
+      console.error('❌ Detalles del error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setVerificandoStock(false);
+      // Mantener alertas anteriores en caso de error
+    }
+  };
+
+  /**
+   * Función para cargar productos más vendidos durante un período de meses
+   */
+  const cargarProductosAnuales = async (meses = 3) => {
+    try {
+      setCargandoAnuales(true);
+      const url = `${API_CONFIG.ML.PRODUCTOS_ANUALES}?meses=${meses}`;
+      console.log('📊 Cargando productos anuales para los últimos', meses, 'meses');
+      console.log('📍 URL:', url);
+      
+      const response = await apiGet(url);
+      
+      console.log('📥 Respuesta completa:', response);
+      console.log('📥 Response.data:', response.data);
+      console.log('📥 Response type:', typeof response);
+      
+      // Axios devuelve la respuesta en response.data
+      const responseData = response?.data || response;
+      
+      console.log('📥 ResponseData procesado:', responseData);
+      console.log('📥 Success:', responseData?.success);
+      console.log('📥 Productos:', responseData?.productos);
+      
+      // Verificar si la respuesta es exitosa
+      if (responseData && (responseData.success === true || responseData.success === undefined)) {
+        const productos = Array.isArray(responseData.productos) ? responseData.productos : [];
+        const categorias = Array.isArray(responseData.categorias) ? responseData.categorias : [];
+        
+        console.log('✅ Productos anuales cargados:', productos.length);
+        console.log('✅ Categorías cargadas:', categorias.length);
+        console.log('📅 Rango de fechas:', responseData.fecha_inicio, 'a', responseData.fecha_fin);
+        console.log('📊 Total ventas en rango:', responseData.total_ventas_rango);
+        
+        if (productos.length > 0) {
+          console.log('📦 Primer producto:', productos[0]);
+          console.log('📦 Todos los productos:', productos);
+        } else {
+          console.warn('⚠️ No se encontraron productos en el rango de fechas');
+          console.warn('⚠️ Verificar si hay ventas en la base de datos para el rango:', responseData.fecha_inicio, 'a', responseData.fecha_fin);
+        }
+        
+        // Actualizar estado con los productos
+        setProductosAnuales(productos);
+        setCategoriasAnuales(categorias);
+        
+        console.log('✅ Estado actualizado - productosAnuales:', productos.length, 'productos');
+      } else {
+        console.warn('⚠️ No se pudieron cargar productos anuales - respuesta sin success');
+        console.warn('⚠️ Response:', response);
+        console.warn('⚠️ ResponseData:', responseData);
+        setProductosAnuales([]);
+        setCategoriasAnuales([]);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando productos anuales:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      setProductosAnuales([]);
+      setCategoriasAnuales([]);
+    } finally {
+      setCargandoAnuales(false);
     }
   };
 
@@ -456,9 +627,17 @@ const Dashboard = () => {
    * Efecto para cargar predicciones ML al montar el componente
    */
   useEffect(() => {
-    cargarPrediccionesML();
+    cargarPrediccionesML(estacionFiltroGraficosPrincipales);
     verificarStockBajo(); // Verificar stock al montar
+    cargarProductosAnuales(mesesFiltroAnuales); // Cargar productos anuales
   }, []);
+  
+  /**
+   * Efecto para recargar productos anuales cuando cambia el filtro de meses
+   */
+  useEffect(() => {
+    cargarProductosAnuales(mesesFiltroAnuales);
+  }, [mesesFiltroAnuales]);
   
   /**
    * Efecto para verificar stock bajo cada 15 minutos
@@ -955,10 +1134,10 @@ const Dashboard = () => {
       case 'todas':
       default:
         return [
-          '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
-          '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
-          '#EC7063', '#5DADE2'
-        ];
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
+    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52BE80',
+    '#EC7063', '#5DADE2'
+  ];
     }
   };
 
@@ -1041,18 +1220,37 @@ const Dashboard = () => {
 
     setCargandoComparacion(true);
     try {
+      // Calcular el último día de cada mes correctamente
+      const obtenerUltimoDiaMes = (mesAno) => {
+        const [ano, mes] = mesAno.split('-');
+        const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+        return ultimoDia.toString().padStart(2, '0');
+      };
+      
+      const fechaInicio1 = `${mesComparacion1}-01`;
+      const fechaFin1 = `${mesComparacion1}-${obtenerUltimoDiaMes(mesComparacion1)}`;
+      const fechaInicio2 = `${mesComparacion2}-01`;
+      const fechaFin2 = `${mesComparacion2}-${obtenerUltimoDiaMes(mesComparacion2)}`;
+      
+      console.log('📊 Cargando comparación:', {
+        mes1: mesComparacion1,
+        rango1: `${fechaInicio1} a ${fechaFin1}`,
+        mes2: mesComparacion2,
+        rango2: `${fechaInicio2} a ${fechaFin2}`
+      });
+      
       // Cargar datos de productos vendidos en ambos meses
       const [response1, response2] = await Promise.all([
         apiClient.get(API_CONFIG.REPORTES.PRODUCTOS, {
           params: {
-            fecha_inicio: `${mesComparacion1}-01`,
-            fecha_fin: `${mesComparacion1}-31`
+            fecha_inicio: fechaInicio1,
+            fecha_fin: fechaFin1
           }
         }),
         apiClient.get(API_CONFIG.REPORTES.PRODUCTOS, {
           params: {
-            fecha_inicio: `${mesComparacion2}-01`,
-            fecha_fin: `${mesComparacion2}-31`
+            fecha_inicio: fechaInicio2,
+            fecha_fin: fechaFin2
           }
         })
       ]);
@@ -1128,21 +1326,30 @@ const Dashboard = () => {
 
       // Preparar datos en formato para gráfico de barras comparativo
       if (productosCombinados.length > 0) {
+        // Generar nombres de meses correctamente
+        const nombreMes1 = mesComparacion1 ? formatearMes(mesComparacion1) : 'Mes 1';
+        const nombreMes2 = mesComparacion2 ? formatearMes(mesComparacion2) : 'Mes 2';
+        
+        console.log('📊 Etiquetas generadas:', { nombreMes1, nombreMes2, mesComparacion1, mesComparacion2 });
+        console.log('📊 Datos cargados - Mes 1:', productosMes1.length, 'productos');
+        console.log('📊 Datos cargados - Mes 2:', productosMes2.length, 'productos');
+        
+        // Guardar solo los datos, sin las etiquetas (se generarán en el render)
         const datos1 = {
           labels,
+          mesComparacion: mesComparacion1, // Guardar el mes para generar etiqueta después
           datasets: [{
-            label: mesComparacion1 ? new Date(mesComparacion1 + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) : 'Mes 1',
             data: dataMes1,
             backgroundColor: 'rgba(54, 162, 235, 0.6)',
             borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 2
-    }]
+            borderWidth: 2
+          }]
         };
 
         const datos2 = {
           labels,
+          mesComparacion: mesComparacion2, // Guardar el mes para generar etiqueta después
           datasets: [{
-            label: mesComparacion2 ? new Date(mesComparacion2 + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) : 'Mes 2',
             data: dataMes2,
             backgroundColor: 'rgba(255, 99, 132, 0.6)',
             borderColor: 'rgba(255, 99, 132, 1)',
@@ -1328,7 +1535,20 @@ const Dashboard = () => {
         </div>
         
         {/* Alertas críticas en la parte superior */}
-        {alertasStock.length > 0 && (
+        {(() => {
+          // Contar alertas totales (combinando ambas fuentes)
+          const totalAlertas = [...(alertasStock || []), ...(datos.insumosBajos || [])]
+            .filter((insumo, index, self) => {
+              // Eliminar duplicados por nombre
+              return index === self.findIndex(i => (i.nombre || '').trim() === (insumo.nombre || '').trim());
+            })
+            .filter(insumo => {
+              const stock = parseFloat(insumo.stock || insumo.cantidad || 0);
+              const minimo = parseFloat(insumo.stockMinimo || insumo.alerta_stock || 0);
+              return stock <= minimo && minimo > 0;
+            }).length;
+          
+          return totalAlertas > 0 && (
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem',
@@ -1349,7 +1569,7 @@ const Dashboard = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '1.5rem' }}>🚨</span>
               <strong style={{ color: '#856404', fontSize: '1.1rem' }}>
-                ALERTA: {alertasStock.length} {alertasStock.length === 1 ? 'insumo' : 'insumos'} con stock bajo detectado{alertasStock.length > 1 ? 's' : ''}
+                ALERTA: {totalAlertas} {totalAlertas === 1 ? 'insumo' : 'insumos'} con stock bajo detectado{totalAlertas > 1 ? 's' : ''}
               </strong>
             </div>
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404', marginBottom: '0.75rem' }}>
@@ -1388,77 +1608,132 @@ const Dashboard = () => {
               📦 Ir a Gestión de Insumos
             </button>
           </div>
-        )}
+          );
+        })()}
         
-        {datos.insumosBajos.length > 0 || alertasStock.length > 0 ? (
-          <div className="alerts-grid">
-            {/* Combinar alertas de stock y datos del dashboard, eliminando duplicados */}
-            {(() => {
-              // Usar alertasStock si existe, sino usar datos.insumosBajos
-              const insumosMostrar = alertasStock.length > 0 ? alertasStock : datos.insumosBajos;
-              
-              // Eliminar duplicados por nombre usando un Map
-              const insumosUnicos = new Map();
-              insumosMostrar.forEach(insumo => {
-                const nombre = insumo.nombre || '';
-                // Si ya existe, mantener el que tiene menor stock (más crítico)
-                if (!insumosUnicos.has(nombre)) {
-                  insumosUnicos.set(nombre, insumo);
-                } else {
-                  const existente = insumosUnicos.get(nombre);
-                  const stockActual = insumo.cantidad || insumo.stock || 0;
-                  const stockExistente = existente.cantidad || existente.stock || 0;
-                  if (stockActual < stockExistente) {
-                    insumosUnicos.set(nombre, insumo);
-                  }
-                }
-              });
-              
-              const insumosFinales = Array.from(insumosUnicos.values());
-              
-              return insumosFinales.map((insumo, index) => {
-                const stockActual = insumo.cantidad || insumo.stock || 0;
-                const stockMinimo = insumo.stockMinimo || insumo.alerta_stock || 0;
-                const colorAlerta = obtenerColorAlerta(stockActual, stockMinimo);
-                
-                return (
-                  <div 
-                    key={`${insumo.nombre}-${index}`}
-                    className={`alert-card ${colorAlerta}`}
-                    style={{
-                      animation: colorAlerta === 'critico' ? 'shake 0.5s' : 'none'
-                    }}
-                  >
-                    <div className="alert-icon">
-                      {colorAlerta === 'critico' ? '🔴' : '🟡'}
-                    </div>
-                    <div className="alert-content">
-                      <h4 className="alert-title">{insumo.nombre}</h4>
-                      <p className="alert-description">
-                        Stock actual: <strong>{stockActual}</strong> | 
-                        Mínimo: <strong>{stockMinimo}</strong>
-                      </p>
-                      <div className="alert-progress">
-                        <div 
-                          className="progress-bar"
-                          style={{
-                            width: `${Math.min((stockActual / stockMinimo) * 100, 100)}%`,
-                            backgroundColor: colorAlerta === 'critico' ? '#dc3545' : '#ffc107'
-                          }}
-                        ></div>
+        {(() => {
+          // Combinar alertasStock y datos.insumosBajos, eliminando duplicados
+          const todosLosInsumos = [...(alertasStock || []), ...(datos.insumosBajos || [])];
+          
+          // Eliminar duplicados por nombre usando un Map
+          const insumosUnicos = new Map();
+          todosLosInsumos.forEach(insumo => {
+            const nombre = (insumo.nombre || '').trim();
+            if (!nombre) return; // Saltar si no tiene nombre
+            
+            // Si ya existe, mantener el que tiene menor stock (más crítico)
+            if (!insumosUnicos.has(nombre)) {
+              insumosUnicos.set(nombre, insumo);
+            } else {
+              const existente = insumosUnicos.get(nombre);
+              const stockActual = parseFloat(insumo.stock || insumo.cantidad || 0);
+              const stockExistente = parseFloat(existente.stock || existente.cantidad || 0);
+              if (stockActual < stockExistente) {
+                insumosUnicos.set(nombre, insumo);
+              }
+            }
+          });
+          
+          const insumosFinales = Array.from(insumosUnicos.values())
+            .filter(insumo => {
+              // Filtrar solo los que realmente están bajo el mínimo
+              const stock = parseFloat(insumo.stock || insumo.cantidad || 0);
+              const minimo = parseFloat(insumo.stockMinimo || insumo.alerta_stock || 0);
+              return stock <= minimo && minimo > 0;
+            });
+          
+          console.log('📊 Insumos finales para mostrar:', insumosFinales);
+          
+          if (insumosFinales.length > 0) {
+            return (
+              <div className="alerts-grid">
+                {insumosFinales.map((insumo, index) => {
+                  const stockActual = parseFloat(insumo.stock || insumo.cantidad || 0);
+                  const stockMinimo = parseFloat(insumo.stockMinimo || insumo.alerta_stock || 0);
+                  const unidad = insumo.unidad || '';
+                  const porcentajeStock = stockMinimo > 0 ? (stockActual / stockMinimo) * 100 : 0;
+                  const colorAlerta = porcentajeStock <= 50 ? 'critico' : 'advertencia';
+                  
+                  // Función para formatear números sin .00 cuando son enteros
+                  const formatearNumero = (num) => {
+                    if (Number.isInteger(num)) {
+                      return num.toString();
+                    }
+                    // Si tiene decimales, eliminar ceros innecesarios al final
+                    return parseFloat(num.toFixed(10)).toString();
+                  };
+                  
+                  return (
+                    <div 
+                      key={`${insumo.nombre}-${index}`}
+                      className={`alert-card ${colorAlerta}`}
+                      style={{
+                        animation: colorAlerta === 'critico' ? 'shake 0.5s' : 'none',
+                        backgroundColor: colorAlerta === 'critico' ? '#ffebee' : '#fff8e1',
+                        border: `2px solid ${colorAlerta === 'critico' ? '#f44336' : '#ffc107'}`,
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        marginBottom: '1rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ fontSize: '2rem' }}>
+                          {colorAlerta === 'critico' ? '🔴' : '🟡'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 0.5rem 0', color: '#333', fontSize: '1.1rem' }}>
+                            {insumo.nombre}
+                          </h4>
+                          <p style={{ margin: '0.25rem 0', color: '#666', fontSize: '0.9rem' }}>
+                            Stock actual: <strong>{formatearNumero(stockActual)} {unidad}</strong>
+                          </p>
+                          <p style={{ margin: '0.25rem 0', color: '#666', fontSize: '0.9rem' }}>
+                            Stock mínimo: <strong>{formatearNumero(stockMinimo)} {unidad}</strong>
+                          </p>
+                          <div style={{ 
+                            marginTop: '0.5rem',
+                            width: '100%',
+                            height: '8px',
+                            backgroundColor: '#e0e0e0',
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                          }}>
+                            <div 
+                              style={{
+                                width: `${Math.min(porcentajeStock, 100)}%`,
+                                height: '100%',
+                                backgroundColor: colorAlerta === 'critico' ? '#f44336' : '#ffc107',
+                                transition: 'width 0.3s ease'
+                              }}
+                            ></div>
+                          </div>
+                          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#999' }}>
+                            {porcentajeStock.toFixed(1)}% del stock mínimo
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        ) : (
-          <div className="no-alerts">
-            <div className="no-alerts-icon">✅</div>
-            <p>¡Excelente! Todos los insumos tienen stock suficiente.</p>
-          </div>
-        )}
+                  );
+                })}
+              </div>
+            );
+          } else {
+            return (
+              <div className="no-alerts" style={{
+                textAlign: 'center',
+                padding: '3rem 2rem',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px',
+                border: '2px solid #4caf50'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+                <p style={{ fontSize: '1.1rem', color: '#2e7d32', margin: 0 }}>
+                  ¡Excelente! Todos los insumos tienen stock suficiente.
+                </p>
+              </div>
+            );
+          }
+        })()}
       </div>
 
       {/* Sección de Machine Learning / Predicciones */}
@@ -1682,15 +1957,18 @@ const Dashboard = () => {
                   >
                     ⚡ Energéticas
                   </button>
+                    </div>
                 </div>
-              </div>
               
               {/* Grid de productos según filtro seleccionado */}
-              <div className="ml-productos-grid" style={{
-                display: 'grid',
+                <div className="ml-productos-grid" style={{
+                  display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: '1rem'
-              }}>
+                  gap: '1rem',
+                  maxHeight: '600px',
+                  overflowY: 'auto',
+                  paddingRight: '8px'
+                }}>
                 {(() => {
                   // Seleccionar productos según categoría filtrada
                   // Categorías reales de la BD: Café, Té, Pastelería, Empanadas, Sándwiches, Bebidas
@@ -1735,6 +2013,23 @@ const Dashboard = () => {
                   // Combinar datos de ML con BD para obtener ventas
                   const combinarConVentas = (productosCategoria, datosML) => {
                     if (!productosCategoria || productosCategoria.length === 0) return [];
+                    
+                    // Primero intentar usar productosAnuales que tienen datos reales de ventas
+                    if (productosAnuales && productosAnuales.length > 0) {
+                      return productosCategoria.map(p => {
+                        const productoConVentas = productosAnuales.find(pa => 
+                          normalizar(pa.nombre) === normalizar(p.nombre)
+                        );
+                        if (productoConVentas && productoConVentas.total_vendido > 0) {
+                          return {
+                            ...p,
+                            total_vendido: productoConVentas.total_vendido,
+                            precio: productoConVentas.precio || p.precio
+                          };
+                        }
+                        return p;
+                      });
+                    }
                     
                     // Si hay datos de ML, usarlos para obtener total_vendido
                     if (datosML && datosML.length > 0) {
@@ -1847,7 +2142,10 @@ const Dashboard = () => {
                       colorTitulo = '#CD853F';
                       break;
                     case 'sandwiches':
+                      // Obtener TODOS los productos de Sándwiches de la BD
                       let sandwichesBD = filtrarPorCategoriaExacta(productosBD, ['sándwiches', 'sandwiches']);
+                      
+                      // Si no hay en BD, usar fallback
                       if (sandwichesBD.length === 0) {
                         sandwichesBD = [
                           { id_producto: 30, nombre: 'Sándwich Jamón Queso', categoria: 'Sándwiches', precio: 2800, total_vendido: 0 },
@@ -1855,11 +2153,43 @@ const Dashboard = () => {
                           { id_producto: 32, nombre: 'Bagel Cream Cheese', categoria: 'Sándwiches', precio: 4200, total_vendido: 0 }
                         ];
                       }
+                      
+                      // Combinar con productosAnuales para obtener ventas reales
                       productosAMostrar = combinarConVentas(sandwichesBD, todosProductosML);
+                      
+                      // También agregar productos de productosAnuales que sean Sándwiches pero no estén en BD
+                      if (productosAnuales && productosAnuales.length > 0) {
+                        const sandwichesAnuales = productosAnuales.filter(p => {
+                          const catNorm = normalizar(p.categoria);
+                          return catNorm === 'sandwiches' || catNorm === 'sándwiches';
+                        });
+                        
+                        console.log('🔍 Sándwiches en productosAnuales:', sandwichesAnuales.length, sandwichesAnuales);
+                        
+                        // Agregar productos que no estén ya en productosAMostrar
+                        sandwichesAnuales.forEach(pa => {
+                          const existe = productosAMostrar.find(p => 
+                            normalizar(p.nombre) === normalizar(pa.nombre)
+                          );
+                          if (!existe) {
+                            productosAMostrar.push(pa);
+                          } else {
+                            // Actualizar ventas si el de productosAnuales tiene más datos
+                            existe.total_vendido = pa.total_vendido || existe.total_vendido || 0;
+                            existe.precio = pa.precio || existe.precio;
+                          }
+                        });
+                      }
+                      
+                      console.log('🔍 Sándwiches a mostrar:', productosAMostrar.length, productosAMostrar);
+                      
                       colorTitulo = '#8B4513';
                       break;
                     case 'bebidas':
+                      // Obtener TODOS los productos de Bebidas de la BD
                       let bebidasBD = filtrarPorCategoriaExacta(productosBD, ['bebidas']);
+                      
+                      // Si no hay en BD, usar fallback
                       if (bebidasBD.length === 0) {
                         bebidasBD = [
                           { id_producto: 33, nombre: 'Jugo Naranja', categoria: 'Bebidas', precio: 2500, total_vendido: 0 },
@@ -1868,7 +2198,33 @@ const Dashboard = () => {
                           { id_producto: 36, nombre: 'Chocolate Caliente', categoria: 'Bebidas', precio: 2500, total_vendido: 0 }
                         ];
                       }
+                      
+                      // Combinar con productosAnuales para obtener ventas reales
+                      // Esto mostrará TODOS los productos de Bebidas, no solo los del top
                       productosAMostrar = combinarConVentas(bebidasBD, todosProductosML);
+                      
+                      // También agregar productos de productosAnuales que sean Bebidas pero no estén en BD
+                      if (productosAnuales && productosAnuales.length > 0) {
+                        const bebidasAnuales = productosAnuales.filter(p => {
+                          const catNorm = normalizar(p.categoria);
+                          return catNorm === 'bebidas';
+                        });
+                        
+                        // Agregar productos que no estén ya en productosAMostrar
+                        bebidasAnuales.forEach(pa => {
+                          const existe = productosAMostrar.find(p => 
+                            normalizar(p.nombre) === normalizar(pa.nombre)
+                          );
+                          if (!existe) {
+                            productosAMostrar.push(pa);
+                          } else {
+                            // Actualizar ventas si el de productosAnuales tiene más datos
+                            existe.total_vendido = pa.total_vendido || existe.total_vendido || 0;
+                            existe.precio = pa.precio || existe.precio;
+                          }
+                        });
+                      }
+                      
                       colorTitulo = '#1976d2';
                       break;
                     case 'energeticas':
@@ -1920,11 +2276,13 @@ const Dashboard = () => {
                         color: '#666'
                       }}>
                         <p style={{ margin: 0 }}>No hay productos disponibles en esta categoría.</p>
-                      </div>
+                    </div>
                     );
                   }
                   
-                  return productosAMostrar.slice(0, 5).map((producto, index) => {
+                  // Mostrar TODOS los productos que el ML predice, sin ordenar por ventas
+                  // El orden debe ser según la predicción del ML, no por ventas reales
+                  return productosAMostrar.map((producto, index) => {
                     // Calcular indicador de cumplimiento ML
                     const vendidos = producto.total_vendido || 0;
                     const prediccionBase = producto.prediccion || Math.round((index + 1) * 8 + 10); // Predicción estimada
@@ -1942,20 +2300,20 @@ const Dashboard = () => {
                     
                     return (
                       <div key={`sugerencia-${categoriaFiltroSugerencias}-${index}`} style={{
-                        padding: '1rem',
-                        backgroundColor: 'white',
+                      padding: '1rem',
+                      backgroundColor: 'white',
                         borderRadius: '8px',
-                        border: '1px solid #e0e0e0',
+                      border: '1px solid #e0e0e0',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                         transition: 'transform 0.2s, box-shadow 0.2s'
-                      }}>
+                    }}>
                         <h4 style={{ margin: '0 0 0.5rem 0', color: colorTitulo }}>{producto.nombre}</h4>
-                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                          <strong>Categoría:</strong> {producto.categoria}
-                        </p>
-                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
-                          <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
-                        </p>
+                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
+                        <strong>Categoría:</strong> {producto.categoria}
+                      </p>
+                      <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#666' }}>
+                        <strong>Precio:</strong> {formatearMoneda(producto.precio || 0)}
+                      </p>
                         <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: colorTitulo }}>
                           <strong>Vendidos:</strong> {vendidos} unidades
                         </p>
@@ -1973,8 +2331,8 @@ const Dashboard = () => {
                           <span style={{ fontSize: '0.75rem', color: estadoML.color, fontWeight: '600' }}>
                             ML: {estadoML.texto} ({porcentajeCumplimiento}%)
                           </span>
-                        </div>
-                      </div>
+                    </div>
+                </div>
                     );
                   });
                 })()}
@@ -2123,7 +2481,43 @@ const Dashboard = () => {
             {/* Gráficos de Machine Learning */}
             {datosGraficos && (
               <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '2px solid #e0e0e0' }}>
-                <h3 style={{ marginBottom: '1.5rem', color: '#424242' }}>📊 Análisis Visual de Datos</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3 style={{ margin: 0, color: '#424242' }}>📊 Análisis Visual de Datos</h3>
+                  
+                  {/* Filtro de Estación para Gráficos Principales */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>
+                      Filtrar por Estación:
+                    </label>
+                    <select
+                      value={estacionFiltroGraficosPrincipales}
+                      onChange={async (e) => {
+                        const nuevaEstacion = e.target.value;
+                        console.log('🔄 Cambiando filtro de estación a:', nuevaEstacion);
+                        setEstacionFiltroGraficosPrincipales(nuevaEstacion);
+                        // Limpiar datos anteriores para forzar actualización
+                        setDatosGraficos(null);
+                        // Cargar nuevos datos
+                        await cargarPrediccionesML(nuevaEstacion);
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        fontSize: '0.9rem',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        minWidth: '150px'
+                      }}
+                    >
+                      <option value="todas">Todas las Estaciones</option>
+                      <option value="verano">Verano</option>
+                      <option value="otoño">Otoño</option>
+                      <option value="invierno">Invierno</option>
+                      <option value="primavera">Primavera</option>
+                    </select>
+                  </div>
+                </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
                   {/* Gráfico 1: Ventas por Estación - GRANDE */}
@@ -2238,10 +2632,18 @@ const Dashboard = () => {
                   )}
 
                   {/* Gráfico 3: Productos Top */}
-                  {datosGraficos.productos_top && datosGraficos.productos_top.length > 0 && (
+                  {!cargandoML && datosGraficos.productos_top && datosGraficos.productos_top.length > 0 && (
                     <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>Top 5 Productos Más Vendidos</h4>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>
+                        Top 5 Productos Más Vendidos
+                        {estacionFiltroGraficosPrincipales !== 'todas' && (
+                          <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
+                            ({estacionFiltroGraficosPrincipales.charAt(0).toUpperCase() + estacionFiltroGraficosPrincipales.slice(1)})
+                          </span>
+                        )}
+                      </h4>
                       <Bar 
+                        key={`productos-top-${estacionFiltroGraficosPrincipales}-${datosGraficos._timestamp || Date.now()}-${JSON.stringify(datosGraficos.productos_top.map(p => `${p.nombre}-${p.total_vendido}`)).slice(0, 100)}`}
                         data={{
                           labels: datosGraficos.productos_top.map(p => p.nombre.length > 20 ? p.nombre.substring(0, 20) + '...' : p.nombre),
                           datasets: [{
@@ -2271,12 +2673,26 @@ const Dashboard = () => {
                       />
                     </div>
                   )}
+                  {!cargandoML && datosGraficos.productos_top && datosGraficos.productos_top.length === 0 && (
+                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>Top 5 Productos Más Vendidos</h4>
+                      <p style={{ color: '#666' }}>No hay datos de ventas para esta estación.</p>
+                    </div>
+                  )}
 
                   {/* Gráfico 4: Categorías Vendidas */}
-                  {datosGraficos.categorias_vendidas && datosGraficos.categorias_vendidas.length > 0 && (
+                  {!cargandoML && datosGraficos.categorias_vendidas && datosGraficos.categorias_vendidas.length > 0 && (
                     <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>Distribución por Categoría</h4>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>
+                        Distribución por Categoría
+                        {estacionFiltroGraficosPrincipales !== 'todas' && (
+                          <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem' }}>
+                            ({estacionFiltroGraficosPrincipales.charAt(0).toUpperCase() + estacionFiltroGraficosPrincipales.slice(1)})
+                          </span>
+                        )}
+                      </h4>
                       <Doughnut 
+                        key={`categorias-${estacionFiltroGraficosPrincipales}-${datosGraficos._timestamp || Date.now()}-${JSON.stringify(datosGraficos.categorias_vendidas.map(c => c.categoria + c.total_ingresos)).slice(0, 50)}`}
                         data={{
                           labels: datosGraficos.categorias_vendidas.map(c => c.categoria),
                           datasets: [{
@@ -2314,6 +2730,12 @@ const Dashboard = () => {
                       />
                     </div>
                   )}
+                  {!cargandoML && datosGraficos.categorias_vendidas && datosGraficos.categorias_vendidas.length === 0 && (
+                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2' }}>Distribución por Categoría</h4>
+                      <p style={{ color: '#666' }}>No hay datos de ventas para esta estación.</p>
+                    </div>
+                  )}
 
                   {/* Gráfico Único: Productos Más Vendidos con Filtro de Categoría */}
                     <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', gridColumn: 'span 2' }}>
@@ -2340,29 +2762,29 @@ const Dashboard = () => {
                         })()}
                       </h4>
                       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <div>
+                      <div>
                           <label htmlFor="filtro-categoria-grafico" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>
                             Categoría:
-                          </label>
-                          <select
-                            id="filtro-categoria-grafico"
-                            value={categoriaFiltroGrafico}
-                            onChange={(e) => {
-                              try {
-                                setCategoriaFiltroGrafico(e.target.value);
-                              } catch (error) {
-                                console.error('Error cambiando filtro:', error);
-                              }
-                            }}
-                            style={{
+                        </label>
+                        <select
+                          id="filtro-categoria-grafico"
+                          value={categoriaFiltroGrafico}
+                          onChange={(e) => {
+                            try {
+                              setCategoriaFiltroGrafico(e.target.value);
+                            } catch (error) {
+                              console.error('Error cambiando filtro:', error);
+                            }
+                          }}
+                          style={{
                               padding: '0.4rem 0.6rem',
-                              borderRadius: '4px',
-                              border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
                               fontSize: '0.85rem',
-                              backgroundColor: 'white',
-                              cursor: 'pointer'
-                            }}
-                          >
+                            backgroundColor: 'white',
+                            cursor: 'pointer'
+                          }}
+                        >
                             <option value="todas">Todas</option>
                             <option value="Café">☕ Café</option>
                             <option value="Té">🍵 Té</option>
@@ -2371,7 +2793,7 @@ const Dashboard = () => {
                             <option value="Sándwiches">🥪 Sándwiches</option>
                             <option value="Bebidas">🥤 Bebidas</option>
                             <option value="Energéticas">⚡ Energéticas</option>
-                          </select>
+                        </select>
                         </div>
                         <div>
                           <label htmlFor="filtro-estacion-grafico" style={{ marginRight: '0.5rem', fontWeight: 'bold', color: '#666', fontSize: '0.85rem' }}>
@@ -2401,35 +2823,35 @@ const Dashboard = () => {
                     </div>
                     {datosDonaUnico ? (
                       <div style={{ maxWidth: '400px', margin: '0 auto', padding: '1rem' }}>
-                        <Doughnut 
+                      <Doughnut 
                           key={`dona-${categoriaFiltroGrafico}-${estacionFiltroGrafico}`}
-                          data={datosDonaUnico}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: true,
+                        data={datosDonaUnico}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: true,
                             cutout: '50%',
-                            plugins: {
-                              legend: {
-                                position: 'bottom',
-                                labels: {
-                                  boxWidth: 12,
+                          plugins: {
+                            legend: {
+                              position: 'bottom',
+                              labels: {
+                                boxWidth: 12,
                                   font: { size: 11 },
                                   padding: 10,
-                                  usePointStyle: true
-                                }
-                              },
-                              tooltip: {
-                                callbacks: {
-                                  label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    return `${label}: ${value} unidades`;
-                                  }
+                                usePointStyle: true
+                              }
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  const label = context.label || '';
+                                  const value = context.parsed || 0;
+                                  return `${label}: ${value} unidades`;
                                 }
                               }
                             }
-                          }}
-                        />
+                          }
+                        }}
+                      />
                       </div>
                     ) : (
                       <div style={{ textAlign: 'center', padding: '3rem', color: '#666', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
@@ -2448,6 +2870,190 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
+
+            {/* Gráfico de Productos Más Vendidos - Período Anual */}
+            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '2px solid #e0e0e0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h3 style={{ margin: 0, color: '#424242' }}>🏆 Productos Más Vendidos</h3>
+                
+                {/* Filtro de Meses */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>
+                    Últimos:
+                  </label>
+                  <select
+                    value={mesesFiltroAnuales}
+                    onChange={(e) => {
+                      const meses = parseInt(e.target.value);
+                      console.log('🔄 Cambiando filtro de meses a:', meses);
+                      setMesesFiltroAnuales(meses);
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      border: '1px solid #ddd',
+                      fontSize: '0.9rem',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      minWidth: '120px'
+                    }}
+                  >
+                    <option value="3">3 meses</option>
+                    <option value="6">6 meses</option>
+                    <option value="12">12 meses (1 año)</option>
+                    <option value="24">24 meses (2 años)</option>
+                    <option value="36">36 meses (3 años)</option>
+                  </select>
+                </div>
+              </div>
+
+              {cargandoAnuales ? (
+                <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '1rem', color: '#666' }}>Cargando datos...</p>
+                </div>
+              ) : productosAnuales && productosAnuales.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                  {/* Gráfico de Barras - Top 10 Productos */}
+                  <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2', fontSize: '1.1rem' }}>
+                      Top 10 Productos Más Vendidos
+                      <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                        ({mesesFiltroAnuales} {mesesFiltroAnuales === 1 ? 'mes' : 'meses'})
+                      </span>
+                    </h4>
+                    <Bar 
+                      key={`productos-anuales-${mesesFiltroAnuales}-${JSON.stringify(productosAnuales.map(p => `${p.nombre}-${p.total_vendido}`)).slice(0, 100)}`}
+                      data={{
+                        labels: productosAnuales.map(p => p.nombre.length > 15 ? p.nombre.substring(0, 15) + '...' : p.nombre),
+                        datasets: [{
+                          label: 'Unidades Vendidas',
+                          data: productosAnuales.map(p => p.total_vendido || 0),
+                          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          borderWidth: 2
+                        }]
+                      }}
+                      options={{
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                const producto = productosAnuales[context.dataIndex];
+                                return `${context.parsed.x} unidades - ${formatearMoneda(producto?.ingresos || 0)}`;
+                              }
+                            }
+                          }
+                        },
+                        scales: {
+                          x: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: 1
+                            }
+                          }
+                        }
+                      }}
+                      height={400}
+                    />
+                  </div>
+
+                  {/* Gráfico de Dona - Distribución por Categoría */}
+                  {categoriasAnuales && categoriasAnuales.length > 0 && (
+                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1976d2', fontSize: '1.1rem' }}>
+                        Distribución por Categoría
+                        <span style={{ fontSize: '0.85rem', color: '#666', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                          ({mesesFiltroAnuales} {mesesFiltroAnuales === 1 ? 'mes' : 'meses'})
+                        </span>
+                      </h4>
+                      <Doughnut 
+                        key={`categorias-anuales-${mesesFiltroAnuales}-${JSON.stringify(categoriasAnuales.map(c => c.categoria + c.total_ingresos)).slice(0, 50)}`}
+                        data={{
+                          labels: categoriasAnuales.map(c => c.categoria),
+                          datasets: [{
+                            label: 'Ingresos',
+                            data: categoriasAnuales.map(c => Math.round(c.total_ingresos || 0)),
+                            backgroundColor: [
+                              'rgba(255, 99, 132, 0.6)',
+                              'rgba(54, 162, 235, 0.6)',
+                              'rgba(255, 206, 86, 0.6)',
+                              'rgba(75, 192, 192, 0.6)',
+                              'rgba(153, 102, 255, 0.6)',
+                              'rgba(255, 159, 64, 0.6)',
+                              'rgba(199, 199, 199, 0.6)'
+                            ],
+                            borderColor: [
+                              'rgba(255, 99, 132, 1)',
+                              'rgba(54, 162, 235, 1)',
+                              'rgba(255, 206, 86, 1)',
+                              'rgba(75, 192, 192, 1)',
+                              'rgba(153, 102, 255, 1)',
+                              'rgba(255, 159, 64, 1)',
+                              'rgba(199, 199, 199, 1)'
+                            ],
+                            borderWidth: 2
+                          }]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: true,
+                          plugins: {
+                            legend: {
+                              position: 'bottom'
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  const categoria = categoriasAnuales[context.dataIndex];
+                                  const total = context.parsed || 0;
+                                  return `${context.label}: ${formatearMoneda(total)} (${categoria?.total_unidades || 0} unidades)`;
+                                }
+                              }
+                            }
+                          }
+                        }}
+                        height={400}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : !cargandoAnuales ? (
+                <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#666' }}>
+                    No hay datos disponibles
+                  </p>
+                  <p style={{ fontSize: '0.9rem', color: '#999', marginBottom: '1rem' }}>
+                    No se encontraron ventas en los últimos {mesesFiltroAnuales} {mesesFiltroAnuales === 1 ? 'mes' : 'meses'}.
+                  </p>
+                  <button
+                    onClick={() => {
+                      // Intentar con un rango más amplio
+                      const nuevoRango = mesesFiltroAnuales < 12 ? 12 : 24;
+                      setMesesFiltroAnuales(nuevoRango);
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    🔍 Buscar en un rango más amplio
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
@@ -2549,11 +3155,24 @@ const Dashboard = () => {
                 {/* Gráfico de Barras Comparativo - Un único gráfico */}
                 <div style={{ height: '400px', marginTop: '1rem' }}>
                   <Bar
+                    key={`comparacion-meses-${mesComparacion1}-${mesComparacion2}-${tipoComparacion}`}
                     data={{
                       labels: datosGraficoComparacionMes1.labels || [],
                       datasets: [
-                        datosGraficoComparacionMes1.datasets?.[0] || {},
-                        datosGraficoComparacionMes2.datasets?.[0] || {}
+                        {
+                          label: mesComparacion1 ? formatearMes(mesComparacion1) : 'Mes 1',
+                          data: datosGraficoComparacionMes1.datasets?.[0]?.data || [],
+                          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                          borderColor: 'rgba(54, 162, 235, 1)',
+                          borderWidth: 2
+                        },
+                        {
+                          label: mesComparacion2 ? formatearMes(mesComparacion2) : 'Mes 2',
+                          data: datosGraficoComparacionMes2.datasets?.[0]?.data || [],
+                          backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                          borderColor: 'rgba(255, 99, 132, 1)',
+                          borderWidth: 2
+                        }
                       ]
                     }}
                         options={{

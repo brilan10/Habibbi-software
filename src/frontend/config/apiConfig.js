@@ -97,6 +97,21 @@ const API_CONFIG = {
         DELETE: '/api/recetas'
     },
     
+    // Endpoints de agregados
+    AGREGADOS: {
+        LIST: '/api/agregados',
+        GET: '/api/agregados',
+        CREATE: '/api/agregados',
+        UPDATE: '/api/agregados',
+        DELETE: '/api/agregados'
+    },
+    
+    // Endpoints de agregados
+    AGREGADOS: {
+        LIST: '/api/agregados',
+        GET: '/api/agregados'
+    },
+    
     // Endpoints de ventas
     VENTAS: {
         LIST: '/api/ventas',
@@ -131,7 +146,8 @@ const API_CONFIG = {
     ML: {
         PREDICCION_ESTACION: '/api/ml/prediccion-estacion',
         PRODUCTOS_ESTACION: '/api/ml/productos-estacion',
-        RECOMENDACIONES: '/api/ml/recomendaciones'
+        RECOMENDACIONES: '/api/ml/recomendaciones',
+        PRODUCTOS_ANUALES: '/api/ml/productos-anuales'
     },
     
     // Endpoints de Reportes

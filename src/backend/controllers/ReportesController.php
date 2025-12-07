@@ -32,8 +32,17 @@ class ReportesController {
             }
             
             // Remover el directorio base si existe
-            if (strpos($pathSinQuery, '/habibbi-backend') === 0) {
-                $pathSinQuery = substr($pathSinQuery, strlen('/habibbi-backend'));
+            // En producción, el backend puede estar en /habibbi-backend/
+            // En desarrollo local, puede estar en /habibbi-api/
+            $basePaths = ['/habibbi-backend', '/habibbi-api'];
+            
+            // Intentar remover cualquiera de los base paths
+            foreach ($basePaths as $basePath) {
+                if (strpos($pathSinQuery, $basePath) === 0) {
+                    $pathSinQuery = substr($pathSinQuery, strlen($basePath));
+                    error_log("🔍 Path después de remover base ({$basePath}): " . $pathSinQuery);
+                    break;
+                }
             }
             
             error_log("🔍 Path sin query y base: " . $pathSinQuery);
@@ -98,77 +107,256 @@ class ReportesController {
      */
     private function reporteVentas() {
         try {
+            error_log("📊 reporteVentas() - Iniciando");
+            
+            // Verificar que la conexión a la base de datos esté activa
+            if (!$this->db) {
+                throw new Exception("Conexión a la base de datos no inicializada");
+            }
+            
+            // Verificar que la conexión PDO esté disponible
+            try {
+                $pdo = $this->db->getConnection();
+                if (!$pdo) {
+                    throw new Exception("Conexión PDO no disponible");
+                }
+            } catch (Exception $e) {
+                error_log("❌ Error obteniendo conexión PDO: " . $e->getMessage());
+                throw new Exception("Error de conexión a la base de datos: " . $e->getMessage());
+            }
+            
             $fechaInicio = $_GET['fecha_inicio'] ?? null;
             $fechaFin = $_GET['fecha_fin'] ?? null;
             $idVendedor = $_GET['id_vendedor'] ?? null;
             
+            // Validar y limpiar parámetros
+            if ($fechaInicio && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)) {
+                error_log("⚠️ Formato de fecha_inicio inválido: {$fechaInicio}");
+                $fechaInicio = null;
+            }
+            
+            if ($fechaFin && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)) {
+                error_log("⚠️ Formato de fecha_fin inválido: {$fechaFin}");
+                $fechaFin = null;
+            }
+            
+            if ($idVendedor) {
+                $idVendedor = intval($idVendedor);
+                if ($idVendedor <= 0) {
+                    $idVendedor = null;
+                }
+            }
+            
+            error_log("📊 Parámetros recibidos: fecha_inicio={$fechaInicio}, fecha_fin={$fechaFin}, id_vendedor={$idVendedor}");
+            
+            // Construir consulta SQL de forma segura
             $sql = "SELECT 
-                        v.id_venta,
-                        v.fecha,
-                        v.total,
-                        v.metodo_pago,
-                        v.observaciones,
-                        u.nombre as vendedor,
-                        c.nombre as cliente,
-                        COUNT(dv.id_detalle) as cantidad_productos
-                    FROM ventas v
-                    LEFT JOIN usuarios u ON v.id_usuario = u.id_usuario
-                    LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
-                    LEFT JOIN detalle_venta dv ON v.id_venta = dv.id_venta
+                        id_venta,
+                        fecha,
+                        total,
+                        metodo_pago,
+                        observaciones,
+                        id_usuario,
+                        id_cliente
+                    FROM ventas
                     WHERE 1=1";
             
             $params = [];
             
             if ($fechaInicio) {
-                $sql .= " AND DATE(v.fecha) >= ?";
+                $sql .= " AND DATE(fecha) >= ?";
                 $params[] = $fechaInicio;
             }
             
             if ($fechaFin) {
-                $sql .= " AND DATE(v.fecha) <= ?";
+                $sql .= " AND DATE(fecha) <= ?";
                 $params[] = $fechaFin;
             }
             
             if ($idVendedor) {
-                $sql .= " AND v.id_usuario = ?";
+                $sql .= " AND id_usuario = ?";
                 $params[] = $idVendedor;
             }
             
-            $sql .= " GROUP BY v.id_venta, v.fecha, v.total, v.metodo_pago, v.observaciones, u.nombre, c.nombre
-                      ORDER BY v.fecha DESC";
+            $sql .= " ORDER BY fecha DESC";
             
-            $ventas = $this->db->fetchAll($sql, $params);
+            error_log("📊 Ejecutando consulta SQL: " . $sql);
+            error_log("📊 Parámetros: " . json_encode($params));
             
-            // Agregar detalles de productos a cada venta
-            foreach ($ventas as &$venta) {
-                $sqlDetalle = "SELECT 
-                                 p.nombre as producto,
-                                 dv.cantidad,
-                                 dv.subtotal,
-                                 COALESCE(dv.precio_unitario, p.precio) as precio_unitario
-                               FROM detalle_venta dv
-                               LEFT JOIN productos p ON dv.id_producto = p.id_producto
-                               WHERE dv.id_venta = ?";
-                $venta['productos'] = $this->db->fetchAll($sqlDetalle, [$venta['id_venta']]);
+            // Ejecutar consulta con manejo de errores detallado
+            $ventas = [];
+            try {
+                $ventas = $this->db->fetchAll($sql, $params);
+                error_log("📊 Ventas encontradas: " . count($ventas));
+                
+                if ($ventas === false) {
+                    throw new Exception("La consulta retornó false");
+                }
+            } catch (PDOException $e) {
+                $errorInfo = $e->errorInfo ?? [];
+                error_log("❌ Error PDO en consulta principal:");
+                error_log("   Código: " . $e->getCode());
+                error_log("   Mensaje: " . $e->getMessage());
+                error_log("   Info: " . json_encode($errorInfo));
+                error_log("   SQL: " . $sql);
+                error_log("   Parámetros: " . json_encode($params));
+                throw $e;
+            } catch (Exception $e) {
+                error_log("❌ Error en consulta principal: " . $e->getMessage());
+                error_log("   SQL: " . $sql);
+                error_log("   Parámetros: " . json_encode($params));
+                throw $e;
             }
             
-            // Calcular totales
-            $totalVentas = count($ventas);
-            $totalIngresos = array_sum(array_column($ventas, 'total'));
+            // Si no hay ventas, retornar respuesta vacía
+            if (empty($ventas)) {
+                error_log("📊 No se encontraron ventas con los filtros aplicados");
+                $this->sendResponse(200, [
+                    'success' => true,
+                    'data' => [],
+                    'resumen' => [
+                        'total_ventas' => 0,
+                        'total_ingresos' => 0,
+                        'promedio_venta' => 0
+                    ]
+                ]);
+                return;
+            }
+            
+            // Procesar ventas y agregar información adicional de forma simple
+            $ventasProcesadas = [];
+            foreach ($ventas as $venta) {
+                try {
+                    // Obtener nombre del vendedor
+                    $vendedor = 'Sin vendedor';
+                    if (!empty($venta['id_usuario'])) {
+                        try {
+                            $sqlVendedor = "SELECT nombre FROM usuarios WHERE id_usuario = ? LIMIT 1";
+                            $vendedorData = $this->db->fetch($sqlVendedor, [$venta['id_usuario']]);
+                            if ($vendedorData && isset($vendedorData['nombre'])) {
+                                $vendedor = $vendedorData['nombre'];
+                            }
+                        } catch (Exception $e) {
+                            error_log("⚠️ Error obteniendo vendedor {$venta['id_usuario']}: " . $e->getMessage());
+                        }
+                    }
+                    
+                    // Obtener nombre del cliente
+                    $cliente = 'Cliente general';
+                    if (!empty($venta['id_cliente'])) {
+                        try {
+                            $sqlCliente = "SELECT nombre FROM clientes WHERE id_cliente = ? LIMIT 1";
+                            $clienteData = $this->db->fetch($sqlCliente, [$venta['id_cliente']]);
+                            if ($clienteData && isset($clienteData['nombre'])) {
+                                $cliente = $clienteData['nombre'];
+                            }
+                        } catch (Exception $e) {
+                            error_log("⚠️ Error obteniendo cliente {$venta['id_cliente']}: " . $e->getMessage());
+                        }
+                    }
+                    
+                    // Obtener detalles de productos
+                    $productos = [];
+                    try {
+                        $sqlDetalle = "SELECT 
+                                         COALESCE(p.nombre, 'Producto eliminado') as producto,
+                                         dv.cantidad,
+                                         dv.subtotal,
+                                         COALESCE(p.precio, CASE WHEN dv.cantidad > 0 THEN dv.subtotal / dv.cantidad ELSE 0 END) as precio_unitario
+                                       FROM detalle_venta dv
+                                       LEFT JOIN productos p ON dv.id_producto = p.id_producto
+                                       WHERE dv.id_venta = ?";
+                        $productos = $this->db->fetchAll($sqlDetalle, [$venta['id_venta']]);
+                    } catch (Exception $e) {
+                        error_log("⚠️ Error obteniendo productos para venta {$venta['id_venta']}: " . $e->getMessage());
+                        $productos = [];
+                    }
+                    
+                    $ventaCompleta = [
+                        'id_venta' => $venta['id_venta'],
+                        'fecha' => $venta['fecha'],
+                        'total' => $venta['total'],
+                        'metodo_pago' => $venta['metodo_pago'] ?? 'efectivo',
+                        'observaciones' => $venta['observaciones'] ?? null,
+                        'vendedor' => $vendedor,
+                        'cliente' => $cliente,
+                        'cantidad_productos' => count($productos),
+                        'productos' => $productos
+                    ];
+                    
+                    $ventasProcesadas[] = $ventaCompleta;
+                } catch (Exception $e) {
+                    error_log("⚠️ Error procesando venta {$venta['id_venta']}: " . $e->getMessage());
+                    // Agregar venta con información mínima
+                    $ventasProcesadas[] = [
+                        'id_venta' => $venta['id_venta'],
+                        'fecha' => $venta['fecha'],
+                        'total' => $venta['total'],
+                        'metodo_pago' => $venta['metodo_pago'] ?? 'efectivo',
+                        'observaciones' => $venta['observaciones'] ?? null,
+                        'vendedor' => 'Sin vendedor',
+                        'cliente' => 'Cliente general',
+                        'cantidad_productos' => 0,
+                        'productos' => []
+                    ];
+                }
+            }
+            
+            // Calcular totales de forma segura
+            $totalVentas = count($ventasProcesadas);
+            $totalIngresos = 0;
+            if ($totalVentas > 0) {
+                $totales = array_column($ventasProcesadas, 'total');
+                $totalIngresos = array_sum(array_filter($totales, function($val) {
+                    return is_numeric($val);
+                }));
+            }
+            
+            error_log("📊 Enviando respuesta: total_ventas={$totalVentas}, total_ingresos={$totalIngresos}");
             
             $this->sendResponse(200, [
                 'success' => true,
-                'data' => $ventas,
+                'data' => $ventasProcesadas,
                 'resumen' => [
                     'total_ventas' => $totalVentas,
-                    'total_ingresos' => $totalIngresos,
+                    'total_ingresos' => round($totalIngresos, 2),
                     'promedio_venta' => $totalVentas > 0 ? round($totalIngresos / $totalVentas, 2) : 0
                 ]
             ]);
+        } catch (PDOException $e) {
+            $errorCode = $e->getCode();
+            $errorMessage = $e->getMessage();
+            $errorInfo = $e->errorInfo ?? [];
+            
+            error_log("❌ Error PDO en reporteVentas:");
+            error_log("   Código: {$errorCode}");
+            error_log("   Mensaje: {$errorMessage}");
+            error_log("   Info: " . json_encode($errorInfo));
+            error_log("   Stack trace: " . $e->getTraceAsString());
+            
+            // Determinar el tipo de error
+            $errorType = 'Error de base de datos';
+            if (strpos($errorMessage, 'Table') !== false && strpos($errorMessage, "doesn't exist") !== false) {
+                $errorType = 'Tabla no encontrada en la base de datos';
+            } elseif (strpos($errorMessage, 'SQL syntax') !== false) {
+                $errorType = 'Error de sintaxis SQL';
+            } elseif (strpos($errorMessage, 'Access denied') !== false) {
+                $errorType = 'Error de permisos en la base de datos';
+            }
+            
+            $this->sendResponse(500, [
+                'success' => false,
+                'error' => 'Error de base de datos al generar reporte de ventas',
+                'error_type' => $errorType,
+                'message' => $errorMessage,
+                'code' => $errorCode,
+                'details' => 'Verifica los logs del servidor para más información. Error: ' . substr($errorMessage, 0, 200)
+            ]);
         } catch (Exception $e) {
-            error_log("Error en reporteVentas: " . $e->getMessage());
+            error_log("❌ Error en reporteVentas: " . $e->getMessage());
             error_log("Stack trace: " . $e->getTraceAsString());
             $this->sendResponse(500, [
+                'success' => false,
                 'error' => 'Error al generar reporte de ventas',
                 'message' => $e->getMessage(),
                 'details' => 'Verifica los logs del servidor para más información'

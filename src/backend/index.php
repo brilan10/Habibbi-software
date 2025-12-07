@@ -120,18 +120,21 @@ error_log("📥 Path parseado inicialmente: " . $path);
 
 // Remover el directorio base si existe
 // En producción, el backend puede estar en /habibbi-backend/
+// En desarrollo local, puede estar en /habibbi-api/
 // Necesitamos remover esto para obtener solo la ruta del API
-$basePath = '/habibbi-backend';
+$basePaths = ['/habibbi-backend', '/habibbi-api'];
 
-// strpos() busca si $basePath está al inicio de $path
-// === 0 significa que está al inicio (posición 0)
-if (strpos($path, $basePath) === 0) {
-    // substr() extrae una parte del string
-    // strlen($basePath) obtiene la longitud del basePath
-    // Esto remueve el basePath del inicio del path
-    // Ejemplo: '/habibbi-backend/api/usuarios' → '/api/usuarios'
-    $path = substr($path, strlen($basePath));
-    error_log("📥 Path después de remover base: " . $path);
+// Intentar remover cualquiera de los base paths
+foreach ($basePaths as $basePath) {
+    if (strpos($path, $basePath) === 0) {
+        // substr() extrae una parte del string
+        // strlen($basePath) obtiene la longitud del basePath
+        // Esto remueve el basePath del inicio del path
+        // Ejemplo: '/habibbi-api/api/usuarios' → '/api/usuarios'
+        $path = substr($path, strlen($basePath));
+        error_log("📥 Path después de remover base ({$basePath}): " . $path);
+        break;
+    }
 }
 
 // =====================================================
@@ -617,6 +620,59 @@ try {
                 default:
                     $insumosController->sendResponse(405, ['error' => 'Método no permitido']);
                     break;
+            }
+            break;
+            
+        // Agregados
+        case strpos($path, '/api/agregados') !== false:
+            require_once 'config/database.php';
+            $db = new Database();
+            
+            // Solo GET para listar agregados
+            if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+                try {
+                    // Verificar si la tabla existe
+                    $checkTable = $db->fetch("SHOW TABLES LIKE 'agregados'");
+                    if (!$checkTable) {
+                        http_response_code(200);
+                        header('Content-Type: application/json; charset=utf-8');
+                        echo json_encode([
+                            'success' => true,
+                            'data' => [],
+                            'message' => 'Tabla de agregados no existe. Ejecuta el script 04_agregados.sql'
+                        ], JSON_UNESCAPED_UNICODE);
+                        exit;
+                    }
+                    
+                    // Obtener agregados activos
+                    $sql = "SELECT id_agregado, nombre, descripcion, precio_adicional, categoria 
+                            FROM agregados 
+                            WHERE activo = 1 
+                            ORDER BY categoria, nombre";
+                    $agregados = $db->fetchAll($sql);
+                    
+                    http_response_code(200);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $agregados,
+                        'total' => count($agregados)
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                } catch (Exception $e) {
+                    http_response_code(500);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Error al obtener agregados: ' . $e->getMessage()
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+            } else {
+                http_response_code(405);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => 'Método no permitido'], JSON_UNESCAPED_UNICODE);
+                exit;
             }
             break;
             
