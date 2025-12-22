@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>☕ Habibbi Café - Sistema de Gestión</title>
+    <meta name="description" content="Sistema de gestión integral para cafeterías">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+    <style>
+        /* Estilos de carga mientras React se inicializa */
+        #root {
+            min-height: 100vh;
+        }
+        .loading-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f1eb 0%, #e8dcc6 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #8C6A4F;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8C6A4F;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Webpack inyectará el script bundle.js aquí automáticamente -->
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Script de verificación - se ejecuta antes de React
+        console.log('📄 HTML cargado');
+        console.log('🔍 Buscando elemento root...');
+        const rootCheck = document.getElementById('root');
+        if (rootCheck) {
+            console.log('✅ Elemento root encontrado en HTML');
+            console.log('📝 Contenido inicial del root:', rootCheck.innerHTML);
+        } else {
+            console.error('❌ Elemento root NO encontrado');
+        }
+    </script>
+</body>
+</html>

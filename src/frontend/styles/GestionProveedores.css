@@ -1,0 +1,1051 @@
+/**
+ * ARCHIVO: GestionProveedores.css
+ * 
+ * Estilos CSS para el componente de gestión de proveedores
+ * Diseño moderno con gradientes, animaciones y efectos visuales
+ * 
+ * CARACTERÍSTICAS:
+ * - Diseño responsive (adaptable a móviles y tablets)
+ * - Gradientes modernos en botones y headers
+ * - Animaciones suaves en transiciones
+ * - Efectos hover interactivos
+ * - Modales con animación de entrada
+ */
+
+/* ================================================
+   CONTENEDOR PRINCIPAL
+   ================================================ */
+
+/* Contenedor principal del componente de gestión de proveedores */
+.gestion-proveedores-container {
+  /* margin-left: Espacio a la izquierda para el sidebar */
+  /* 280px es el ancho del sidebar, dejando espacio para que no se superponga */
+  margin-left: 280px;
+  
+  /* padding: Espaciado interno del contenedor */
+  /* 2rem = 32px (1rem = 16px por defecto) */
+  padding: 2rem;
+  
+  /* min-height: Altura mínima del contenedor */
+  /* 100vh = 100% del viewport height (altura de la ventana del navegador) */
+  /* Asegura que el contenedor ocupe al menos toda la altura de la pantalla */
+  min-height: 100vh;
+  
+  /* background: Fondo con gradiente lineal */
+  /* linear-gradient crea un degradado de colores */
+  /* 135deg es el ángulo del gradiente (diagonal de arriba-izquierda a abajo-derecha) */
+  /* #f5f7fa es el color inicial (gris muy claro) */
+  /* 0% indica que empieza en este color */
+  /* #c3cfe2 es el color final (azul grisáceo claro) */
+  /* 100% indica que termina en este color */
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* ================================================
+   HEADER DE LA PÁGINA
+   ================================================ */
+
+/* Contenedor del encabezado de la página */
+.page-header {
+  /* text-align: Alineación del texto */
+  /* center centra el texto horizontalmente */
+  text-align: center;
+  
+  /* margin-bottom: Espacio inferior */
+  /* 2.5rem = 40px de espacio debajo del header */
+  margin-bottom: 2.5rem;
+  
+  /* padding: Espaciado interno vertical */
+  /* 2rem arriba y abajo, 0 a los lados */
+  padding: 2rem 0;
+}
+
+/* Título principal de la página */
+.page-title {
+  /* color: Color del texto */
+  /* #2c3e50 es un gris oscuro/azul oscuro */
+  color: #2c3e50;
+  
+  /* font-size: Tamaño de la fuente */
+  /* 2.8rem = 44.8px (muy grande para destacar) */
+  font-size: 2.8rem;
+  
+  /* margin-bottom: Espacio debajo del título */
+  /* 0.5rem = 8px */
+  margin-bottom: 0.5rem;
+  
+  /* font-weight: Grosor de la fuente */
+  /* 700 es bold (negrita) */
+  font-weight: 700;
+  
+  /* text-shadow: Sombra del texto */
+  /* 2px 2px es el desplazamiento horizontal y vertical */
+  /* 4px es el desenfoque de la sombra */
+  /* rgba(0,0,0,0.1) es el color de la sombra (negro con 10% de opacidad) */
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  
+  /* display: Tipo de display */
+  /* flex convierte el elemento en un contenedor flexbox */
+  display: flex;
+  
+  /* align-items: Alineación vertical de los elementos flex */
+  /* center centra verticalmente */
+  align-items: center;
+  
+  /* justify-content: Alineación horizontal de los elementos flex */
+  /* center centra horizontalmente */
+  justify-content: center;
+  
+  /* gap: Espacio entre elementos flex */
+  /* 0.5rem = 8px entre el emoji y el texto */
+  gap: 0.5rem;
+}
+
+/* Pseudoelemento ::before del título */
+/* Se usa para agregar el emoji 🏢 antes del texto */
+.page-title::before {
+  /* content: Contenido del pseudoelemento */
+  /* '🏢' es el emoji que se mostrará */
+  content: '🏢';
+  
+  /* font-size: Tamaño del emoji */
+  /* 2.5rem = 40px */
+  font-size: 2.5rem;
+}
+
+/* Subtítulo de la página */
+.page-subtitle {
+  /* color: Color del texto */
+  /* #5a6c7d es un gris medio */
+  color: #5a6c7d;
+  
+  /* font-size: Tamaño de la fuente */
+  /* 1.2rem = 19.2px */
+  font-size: 1.2rem;
+  
+  /* opacity: Opacidad del elemento */
+  /* 0.9 = 90% de opacidad (ligeramente transparente) */
+  opacity: 0.9;
+  
+  /* font-weight: Grosor de la fuente */
+  /* 400 es normal (no negrita) */
+  font-weight: 400;
+}
+
+/* ================================================
+   BARRA DE ACCIONES
+   ================================================ */
+
+/* Barra que contiene el botón de agregar proveedor */
+.action-bar {
+  /* display: Tipo de display */
+  /* flex convierte en contenedor flexbox */
+  display: flex;
+  
+  /* justify-content: Alineación horizontal */
+  /* flex-start alinea los elementos al inicio (izquierda) */
+  justify-content: flex-start;
+  
+  /* align-items: Alineación vertical */
+  /* center centra verticalmente */
+  align-items: center;
+  
+  /* margin-bottom: Espacio inferior */
+  /* 2rem = 32px */
+  margin-bottom: 2rem;
+  
+  /* padding: Espaciado interno */
+  /* 1.5rem = 24px en todos los lados */
+  padding: 1.5rem;
+  
+  /* background: Color de fondo */
+  /* white es blanco */
+  background: white;
+  
+  /* border-radius: Radio de las esquinas */
+  /* 12px hace las esquinas ligeramente redondeadas */
+  border-radius: 12px;
+  
+  /* box-shadow: Sombra del elemento */
+  /* 0 4px es el desplazamiento (sin desplazamiento horizontal, 4px vertical) */
+  /* 15px es el desenfoque de la sombra */
+  /* rgba(0,0,0,0.1) es negro con 10% de opacidad */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* ================================================
+   BOTONES
+   ================================================ */
+
+/* Estilos base para todos los botones */
+.btn {
+  /* padding: Espaciado interno */
+  /* 0.75rem arriba/abajo (12px), 1.5rem izquierda/derecha (24px) */
+  padding: 0.75rem 1.5rem;
+  
+  /* border: Borde del botón */
+  /* none elimina el borde por defecto */
+  border: none;
+  
+  /* border-radius: Radio de las esquinas */
+  /* 8px hace las esquinas redondeadas */
+  border-radius: 8px;
+  
+  /* font-size: Tamaño de la fuente */
+  /* 1rem = 16px */
+  font-size: 1rem;
+  
+  /* font-weight: Grosor de la fuente */
+  /* 600 es semi-bold */
+  font-weight: 600;
+  
+  /* cursor: Tipo de cursor al pasar el mouse */
+  /* pointer muestra la mano al pasar el mouse (indica que es clickeable) */
+  cursor: pointer;
+  
+  /* transition: Transición suave de propiedades */
+  /* all significa que todas las propiedades que cambien tendrán transición */
+  /* 0.3s es la duración de la transición */
+  /* ease es la función de timing (acelera y desacelera suavemente) */
+  transition: all 0.3s ease;
+  
+  /* display: Tipo de display */
+  /* inline-flex permite que el botón sea inline pero use flexbox internamente */
+  display: inline-flex;
+  
+  /* align-items: Alineación vertical de elementos internos */
+  /* center centra verticalmente (útil para alinear iconos con texto) */
+  align-items: center;
+  
+  /* gap: Espacio entre elementos internos */
+  /* 0.5rem = 8px entre icono y texto */
+  gap: 0.5rem;
+  
+  /* box-shadow: Sombra del botón */
+  /* 0 2px es desplazamiento (sin horizontal, 2px vertical) */
+  /* 8px es el desenfoque */
+  /* rgba(0,0,0,0.15) es negro con 15% de opacidad */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Botón primario (principal, color morado/azul) */
+.btn-primary {
+  /* background: Fondo con gradiente */
+  /* linear-gradient crea un degradado */
+  /* 135deg es el ángulo (diagonal) */
+  /* #667eea es morado/azul claro */
+  /* #764ba2 es morado oscuro */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* color: Color del texto */
+  /* white es blanco */
+  color: white;
+}
+
+/* Efecto hover del botón primario */
+/* :hover es un pseudoselector que se activa al pasar el mouse */
+.btn-primary:hover {
+  /* transform: Transformación del elemento */
+  /* translateY(-2px) mueve el botón 2px hacia arriba */
+  /* Crea efecto de "levantamiento" al pasar el mouse */
+  transform: translateY(-2px);
+  
+  /* box-shadow: Sombra más pronunciada al hacer hover */
+  /* 0 4px es desplazamiento vertical mayor */
+  /* 12px es más desenfoque */
+  /* rgba con color del gradiente y 40% de opacidad */
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Efecto active del botón primario */
+/* :active se activa cuando se hace clic */
+.btn-primary:active {
+  /* transform: Vuelve a la posición original */
+  /* translateY(0) elimina el desplazamiento */
+  /* Crea efecto de "presionado" */
+  transform: translateY(0);
+}
+
+/* Botón de editar (color rosa/rojo) */
+.btn-edit {
+  /* background: Gradiente rosa/rojo */
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  
+  /* color: Color del texto */
+  color: white;
+  
+  /* padding: Espaciado más pequeño (botón más compacto) */
+  padding: 0.5rem 1rem;
+  
+  /* font-size: Tamaño de fuente más pequeño */
+  font-size: 0.9rem;
+}
+
+/* Efecto hover del botón de editar */
+.btn-edit:hover {
+  /* transform: Escala el botón al 105% */
+  /* scale(1.05) hace el botón 5% más grande */
+  transform: scale(1.05);
+  
+  /* box-shadow: Sombra con color del gradiente */
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+}
+
+/* Botón de eliminar (color amarillo/rosa) */
+.btn-delete {
+  /* background: Gradiente amarillo/rosa */
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  
+  /* color: Color del texto (oscuro para contraste) */
+  color: #333;
+  
+  /* padding: Espaciado compacto */
+  padding: 0.5rem 1rem;
+  
+  /* font-size: Tamaño pequeño */
+  font-size: 0.9rem;
+}
+
+/* Efecto hover del botón de eliminar */
+.btn-delete:hover {
+  /* transform: Escala al 105% */
+  transform: scale(1.05);
+  
+  /* box-shadow: Sombra con color del gradiente */
+  box-shadow: 0 4px 12px rgba(250, 112, 154, 0.4);
+}
+
+/* Botón secundario (gris) */
+.btn-secondary {
+  /* background: Color gris */
+  background: #6c757d;
+  
+  /* color: Texto blanco */
+  color: white;
+}
+
+/* Efecto hover del botón secundario */
+.btn-secondary:hover {
+  /* background: Gris más oscuro al hacer hover */
+  background: #5a6268;
+}
+
+/* Botón de peligro (rojo) */
+.btn-danger {
+  /* background: Color rojo */
+  background: #dc3545;
+  
+  /* color: Texto blanco */
+  color: white;
+}
+
+/* Efecto hover del botón de peligro */
+.btn-danger:hover {
+  /* background: Rojo más oscuro al hacer hover */
+  background: #c82333;
+}
+
+/* ================================================
+   TABLA DE DATOS
+   ================================================ */
+
+/* Contenedor de la tabla */
+.table-container {
+  /* background: Fondo blanco */
+  background: white;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 12px;
+  
+  /* box-shadow: Sombra más pronunciada */
+  /* 0 4px desplazamiento vertical */
+  /* 20px desenfoque grande */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  
+  /* overflow: Comportamiento del contenido que se desborda */
+  /* hidden oculta el contenido que se sale del contenedor */
+  /* Útil para que border-radius funcione correctamente */
+  overflow: hidden;
+  
+  /* margin-bottom: Espacio inferior */
+  margin-bottom: 2rem;
+}
+
+/* Tabla de datos */
+.data-table {
+  /* width: Ancho de la tabla */
+  /* 100% ocupa todo el ancho del contenedor */
+  width: 100%;
+  
+  /* border-collapse: Colapso de bordes */
+  /* collapse hace que los bordes de celdas adyacentes se fusionen */
+  /* Evita dobles bordes */
+  border-collapse: collapse;
+}
+
+/* Encabezado de la tabla (thead) */
+.data-table thead {
+  /* background: Fondo con gradiente morado */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* color: Color del texto */
+  color: white;
+}
+
+/* Celdas del encabezado (th) */
+.data-table th {
+  /* padding: Espaciado interno */
+  /* 1.25rem arriba/abajo (20px), 1rem izquierda/derecha (16px) */
+  padding: 1.25rem 1rem;
+  
+  /* text-align: Alineación del texto */
+  /* left alinea a la izquierda */
+  text-align: left;
+  
+  /* font-weight: Grosor de la fuente */
+  /* 600 es semi-bold */
+  font-weight: 600;
+  
+  /* font-size: Tamaño de la fuente */
+  /* 0.95rem = 15.2px */
+  font-size: 0.95rem;
+  
+  /* text-transform: Transformación del texto */
+  /* uppercase convierte todo a mayúsculas */
+  text-transform: uppercase;
+  
+  /* letter-spacing: Espacio entre letras */
+  /* 0.5px aumenta ligeramente el espacio entre letras */
+  letter-spacing: 0.5px;
+}
+
+/* Primera celda del encabezado */
+.data-table th:first-child {
+  /* padding-left: Espacio izquierdo adicional */
+  /* 1.5rem = 24px */
+  padding-left: 1.5rem;
+}
+
+/* Última celda del encabezado */
+.data-table th:last-child {
+  /* padding-right: Espacio derecho adicional */
+  padding-right: 1.5rem;
+  
+  /* text-align: Centrar el texto */
+  text-align: center;
+}
+
+/* Filas del cuerpo de la tabla (tbody tr) */
+.data-table tbody tr {
+  /* border-bottom: Borde inferior */
+  /* 1px sólido de color #e9ecef (gris muy claro) */
+  border-bottom: 1px solid #e9ecef;
+  
+  /* transition: Transición suave */
+  /* all significa todas las propiedades */
+  /* 0.2s es la duración */
+  transition: all 0.2s ease;
+}
+
+/* Efecto hover en las filas */
+.data-table tbody tr:hover {
+  /* background: Fondo gris muy claro al pasar el mouse */
+  background: #f8f9fa;
+  
+  /* transform: Escala la fila al 101% */
+  /* Crea efecto de "crecimiento" sutil */
+  transform: scale(1.01);
+  
+  /* box-shadow: Sombra sutil */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Última fila del cuerpo */
+.data-table tbody tr:last-child {
+  /* border-bottom: Sin borde inferior */
+  /* Evita borde extra al final */
+  border-bottom: none;
+}
+
+/* Celdas de datos (td) */
+.data-table td {
+  /* padding: Espaciado interno */
+  padding: 1.25rem 1rem;
+  
+  /* color: Color del texto */
+  color: #2c3e50;
+  
+  /* vertical-align: Alineación vertical */
+  /* middle centra verticalmente el contenido */
+  vertical-align: middle;
+}
+
+/* Primera celda de cada fila */
+.data-table td:first-child {
+  /* padding-left: Espacio izquierdo adicional */
+  padding-left: 1.5rem;
+  
+  /* font-weight: Negrita para el ID */
+  font-weight: 600;
+  
+  /* color: Color morado para destacar el ID */
+  color: #667eea;
+}
+
+/* Última celda de cada fila */
+.data-table td:last-child {
+  /* padding-right: Espacio derecho adicional */
+  padding-right: 1.5rem;
+  
+  /* text-align: Centrar el contenido */
+  text-align: center;
+}
+
+/* ================================================
+   BOTONES DE ACCIÓN
+   ================================================ */
+
+/* Contenedor de botones de acción (editar y eliminar) */
+.action-buttons {
+  /* display: Flexbox para alinear botones */
+  display: flex;
+  
+  /* gap: Espacio entre botones */
+  /* 0.5rem = 8px */
+  gap: 0.5rem;
+  
+  /* justify-content: Centrar horizontalmente */
+  justify-content: center;
+  
+  /* align-items: Centrar verticalmente */
+  align-items: center;
+}
+
+/* ================================================
+   ESTADOS VACÍOS Y CARGA
+   ================================================ */
+
+/* Contenedor para estado vacío (sin proveedores) */
+.empty-state {
+  /* text-align: Centrar el texto */
+  text-align: center;
+  
+  /* padding: Espaciado interno grande */
+  /* 4rem arriba/abajo (64px), 2rem izquierda/derecha (32px) */
+  padding: 4rem 2rem;
+  
+  /* background: Fondo blanco */
+  background: white;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 12px;
+  
+  /* box-shadow: Sombra */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* Párrafo dentro del estado vacío */
+.empty-state p {
+  /* font-size: Tamaño de fuente */
+  font-size: 1.2rem;
+  
+  /* color: Color gris */
+  color: #6c757d;
+  
+  /* margin-bottom: Espacio inferior */
+  margin-bottom: 1.5rem;
+}
+
+/* Contenedor de carga */
+.loading-container {
+  /* text-align: Centrar el texto */
+  text-align: center;
+  
+  /* padding: Espaciado interno */
+  padding: 4rem 2rem;
+  
+  /* background: Fondo blanco */
+  background: white;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 12px;
+  
+  /* box-shadow: Sombra */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* Párrafo dentro del contenedor de carga */
+.loading-container p {
+  /* font-size: Tamaño de fuente */
+  font-size: 1.2rem;
+  
+  /* color: Color morado */
+  color: #667eea;
+  
+  /* font-weight: Negrita */
+  font-weight: 600;
+}
+
+/* ================================================
+   MODAL
+   ================================================ */
+
+/* Overlay (fondo oscuro) del modal */
+.modal-overlay {
+  /* position: Posicionamiento fijo */
+  /* fixed hace que el elemento esté fijo respecto al viewport */
+  position: fixed;
+  
+  /* top, left, right, bottom: Posicionar en toda la pantalla */
+  /* 0 en todos lados hace que cubra toda la pantalla */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  
+  /* background: Fondo semitransparente oscuro */
+  /* rgba(0,0,0,0.6) es negro con 60% de opacidad */
+  background: rgba(0,0,0,0.6);
+  
+  /* display: Flexbox para centrar el contenido */
+  display: flex;
+  
+  /* align-items: Centrar verticalmente */
+  align-items: center;
+  
+  /* justify-content: Centrar horizontalmente */
+  justify-content: center;
+  
+  /* z-index: Nivel de apilamiento */
+  /* 1000 asegura que esté por encima de otros elementos */
+  z-index: 1000;
+  
+  /* backdrop-filter: Efecto de desenfoque del fondo */
+  /* blur(4px) desenfoca el contenido detrás del modal */
+  backdrop-filter: blur(4px);
+}
+
+/* Contenedor del contenido del modal */
+.modal-content {
+  /* background: Fondo blanco */
+  background: white;
+  
+  /* border-radius: Esquinas muy redondeadas */
+  border-radius: 16px;
+  
+  /* width: Ancho del modal */
+  /* 90% del ancho disponible */
+  width: 90%;
+  
+  /* max-width: Ancho máximo */
+  /* 600px limita el ancho en pantallas grandes */
+  max-width: 600px;
+  
+  /* max-height: Altura máxima */
+  /* 90vh = 90% de la altura del viewport */
+  max-height: 90vh;
+  
+  /* overflow-y: Scroll vertical si el contenido es muy alto */
+  /* auto muestra scroll solo si es necesario */
+  overflow-y: auto;
+  
+  /* box-shadow: Sombra muy pronunciada */
+  /* 0 10px desplazamiento vertical */
+  /* 40px desenfoque grande */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  
+  /* animation: Animación de entrada */
+  /* modalSlideIn es el nombre de la animación */
+  /* 0.3s es la duración */
+  /* ease es la función de timing */
+  animation: modalSlideIn 0.3s ease;
+}
+
+/* Animación de entrada del modal */
+/* @keyframes define una animación personalizada */
+@keyframes modalSlideIn {
+  /* Estado inicial (from o 0%) */
+  from {
+    /* opacity: Opacidad inicial (invisible) */
+    opacity: 0;
+    
+    /* transform: Transformación inicial */
+    /* translateY(-50px) mueve el modal 50px hacia arriba */
+    transform: translateY(-50px);
+  }
+  
+  /* Estado final (to o 100%) */
+  to {
+    /* opacity: Opacidad final (visible) */
+    opacity: 1;
+    
+    /* transform: Transformación final */
+    /* translateY(0) vuelve a la posición normal */
+    transform: translateY(0);
+  }
+}
+
+/* Encabezado del modal */
+.modal-header {
+  /* display: Flexbox para alinear elementos */
+  display: flex;
+  
+  /* justify-content: Espacio entre elementos */
+  /* space-between pone espacio entre el título y el botón de cerrar */
+  justify-content: space-between;
+  
+  /* align-items: Centrar verticalmente */
+  align-items: center;
+  
+  /* padding: Espaciado interno */
+  /* 1.5rem arriba/abajo, 2rem izquierda/derecha */
+  padding: 1.5rem 2rem;
+  
+  /* border-bottom: Borde inferior */
+  /* 2px sólido gris claro */
+  border-bottom: 2px solid #e9ecef;
+  
+  /* background: Fondo con gradiente morado */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* color: Color del texto */
+  color: white;
+  
+  /* border-radius: Esquinas superiores redondeadas */
+  /* 16px arriba, 0 abajo */
+  border-radius: 16px 16px 0 0;
+}
+
+/* Título del encabezado del modal */
+.modal-header h2 {
+  /* margin: Sin márgenes */
+  margin: 0;
+  
+  /* font-size: Tamaño de fuente */
+  font-size: 1.5rem;
+  
+  /* font-weight: Negrita */
+  font-weight: 600;
+}
+
+/* Botón de cerrar (X) */
+.btn-close {
+  /* background: Fondo semitransparente blanco */
+  /* rgba(255,255,255,0.2) es blanco con 20% de opacidad */
+  background: rgba(255,255,255,0.2);
+  
+  /* border: Sin borde */
+  border: none;
+  
+  /* color: Color del texto (blanco) */
+  color: white;
+  
+  /* font-size: Tamaño de la X */
+  font-size: 1.5rem;
+  
+  /* width: Ancho del botón */
+  /* 36px hace el botón cuadrado */
+  width: 36px;
+  
+  /* height: Altura del botón */
+  height: 36px;
+  
+  /* border-radius: Esquinas completamente redondeadas */
+  /* 50% hace un círculo perfecto */
+  border-radius: 50%;
+  
+  /* cursor: Cursor de mano */
+  cursor: pointer;
+  
+  /* display: Flexbox para centrar la X */
+  display: flex;
+  
+  /* align-items: Centrar verticalmente */
+  align-items: center;
+  
+  /* justify-content: Centrar horizontalmente */
+  justify-content: center;
+  
+  /* transition: Transición suave */
+  transition: all 0.2s ease;
+}
+
+/* Efecto hover del botón de cerrar */
+.btn-close:hover {
+  /* background: Fondo más opaco al hacer hover */
+  background: rgba(255,255,255,0.3);
+  
+  /* transform: Rotar 90 grados */
+  /* rotate(90deg) hace que la X rote al pasar el mouse */
+  transform: rotate(90deg);
+}
+
+/* Cuerpo del modal */
+.modal-body {
+  /* padding: Espaciado interno */
+  /* 2rem = 32px en todos los lados */
+  padding: 2rem;
+}
+
+/* Pie del modal */
+.modal-footer {
+  /* display: Flexbox */
+  display: flex;
+  
+  /* justify-content: Alinear al final (derecha) */
+  justify-content: flex-end;
+  
+  /* gap: Espacio entre botones */
+  gap: 1rem;
+  
+  /* padding: Espaciado interno */
+  padding: 1.5rem 2rem;
+  
+  /* border-top: Borde superior */
+  border-top: 2px solid #e9ecef;
+  
+  /* background: Fondo gris muy claro */
+  background: #f8f9fa;
+  
+  /* border-radius: Esquinas inferiores redondeadas */
+  border-radius: 0 0 16px 16px;
+}
+
+/* ================================================
+   FORMULARIO
+   ================================================ */
+
+/* Grupo de campos del formulario */
+.form-group {
+  /* margin-bottom: Espacio inferior entre grupos */
+  margin-bottom: 1.5rem;
+}
+
+/* Etiqueta del campo */
+.form-group label {
+  /* display: Tipo de display */
+  /* block hace que ocupe toda la línea */
+  display: block;
+  
+  /* margin-bottom: Espacio debajo de la etiqueta */
+  margin-bottom: 0.5rem;
+  
+  /* color: Color del texto */
+  color: #2c3e50;
+  
+  /* font-weight: Negrita */
+  font-weight: 600;
+  
+  /* font-size: Tamaño de fuente */
+  font-size: 0.95rem;
+}
+
+/* Inputs y textareas del formulario */
+.form-group input,
+.form-group textarea {
+  /* width: Ancho completo */
+  width: 100%;
+  
+  /* padding: Espaciado interno */
+  padding: 0.75rem 1rem;
+  
+  /* border: Borde */
+  /* 2px sólido gris claro */
+  border: 2px solid #e9ecef;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 8px;
+  
+  /* font-size: Tamaño de fuente */
+  font-size: 1rem;
+  
+  /* transition: Transición suave */
+  transition: all 0.2s ease;
+  
+  /* font-family: Heredar la fuente del elemento padre */
+  font-family: inherit;
+}
+
+/* Estado focus de inputs y textareas */
+/* :focus se activa cuando el campo está seleccionado */
+.form-group input:focus,
+.form-group textarea:focus {
+  /* outline: Sin contorno por defecto */
+  outline: none;
+  
+  /* border-color: Color del borde al hacer focus */
+  /* Morado para indicar que está activo */
+  border-color: #667eea;
+  
+  /* box-shadow: Sombra con color morado */
+  /* 0 0 0 3px crea un anillo de 3px alrededor */
+  /* rgba con color morado y 10% de opacidad */
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Textarea específico */
+.form-group textarea {
+  /* resize: Permitir redimensionar solo verticalmente */
+  resize: vertical;
+  
+  /* min-height: Altura mínima */
+  min-height: 100px;
+}
+
+/* Texto de ayuda del formulario */
+.form-help {
+  /* display: Tipo de display */
+  display: block;
+  
+  /* margin-top: Espacio superior */
+  margin-top: 0.5rem;
+  
+  /* font-size: Tamaño pequeño */
+  font-size: 0.85rem;
+  
+  /* color: Color gris */
+  color: #6c757d;
+}
+
+/* ================================================
+   MODAL DE CONFIRMACIÓN
+   ================================================ */
+
+/* Modal de confirmación (más pequeño) */
+.modal-confirm {
+  /* background: Fondo blanco */
+  background: white;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 16px;
+  
+  /* width: Ancho */
+  width: 90%;
+  
+  /* max-width: Ancho máximo más pequeño */
+  max-width: 500px;
+  
+  /* box-shadow: Sombra */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  
+  /* animation: Animación de entrada */
+  animation: modalSlideIn 0.3s ease;
+}
+
+/* Encabezado del modal de confirmación */
+.modal-confirm-header {
+  /* padding: Espaciado interno */
+  padding: 1.5rem 2rem;
+  
+  /* border-bottom: Borde inferior */
+  border-bottom: 2px solid #e9ecef;
+  
+  /* background: Gradiente amarillo/rosa */
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  
+  /* color: Color del texto (oscuro para contraste) */
+  color: #333;
+  
+  /* border-radius: Esquinas superiores redondeadas */
+  border-radius: 16px 16px 0 0;
+}
+
+/* Título del encabezado de confirmación */
+.modal-confirm-header h3 {
+  /* margin: Sin márgenes */
+  margin: 0;
+  
+  /* font-size: Tamaño de fuente */
+  font-size: 1.3rem;
+  
+  /* font-weight: Negrita */
+  font-weight: 600;
+}
+
+/* Cuerpo del modal de confirmación */
+.modal-confirm-body {
+  /* padding: Espaciado interno */
+  padding: 2rem;
+}
+
+/* Párrafo del cuerpo de confirmación */
+.modal-confirm-body p {
+  /* margin: Márgenes */
+  /* 0 arriba, 0 izquierda/derecha, 1rem abajo */
+  margin: 0 0 1rem 0;
+  
+  /* color: Color del texto */
+  color: #2c3e50;
+  
+  /* font-size: Tamaño de fuente */
+  font-size: 1rem;
+  
+  /* line-height: Altura de línea */
+  /* 1.6 aumenta el espacio entre líneas para mejor legibilidad */
+  line-height: 1.6;
+}
+
+/* Advertencia dentro del cuerpo de confirmación */
+.modal-confirm-body .warning {
+  /* background: Fondo amarillo claro */
+  background: #fff3cd;
+  
+  /* border-left: Borde izquierdo amarillo */
+  /* 4px sólido amarillo */
+  border-left: 4px solid #ffc107;
+  
+  /* padding: Espaciado interno */
+  padding: 1rem;
+  
+  /* border-radius: Esquinas redondeadas */
+  border-radius: 4px;
+  
+  /* margin-top: Espacio superior */
+  margin-top: 1rem;
+}
+
+/* ================================================
+   DISEÑO RESPONSIVE
+   ================================================ */
+
+/* Media query para pantallas pequeñas (móviles y tablets) */
+/* @media es una regla CSS que aplica estilos solo en ciertas condiciones */
+/* (max-width: 768px) significa que estos estilos se aplican cuando el ancho es menor a 768px */
+@media (max-width: 768px) {
+  /* Contenedor principal en móviles */
+  .gestion-proveedores-container {
+    /* margin-left: Sin margen izquierdo (el sidebar se oculta en móviles) */
+    margin-left: 0;
+    
+    /* padding: Espaciado más pequeño */
+    padding: 1rem;
+  }
+  
+  /* Título en móviles */
+  .page-title {
+    /* font-size: Tamaño más pequeño */
+    font-size: 2rem;
+  }
+  
+  /* Tabla en móviles */
+  .data-table {
+    /* font-size: Fuente más pequeña */
+    font-size: 0.9rem;
+  }
+  
+  /* Celdas de la tabla en móviles */
+  .data-table th,
+  .data-table td {
+    /* padding: Espaciado más pequeño */
+    padding: 0.75rem 0.5rem;
+  }
+  
+  /* Modal en móviles */
+  .modal-content {
+    /* width: Ancho casi completo */
+    width: 95%;
+    
+    /* margin: Márgenes laterales */
+    margin: 1rem;
+  }
+}

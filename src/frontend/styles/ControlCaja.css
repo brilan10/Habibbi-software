@@ -1,0 +1,483 @@
+/* Estilos para Control de Caja */
+
+.control-caja-container {
+  margin-left: 280px; /* Espacio para el sidebar */
+  padding: 2rem;
+  min-height: 100vh;
+  background: var(--color-fondo);
+}
+
+/* Header */
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  color: var(--color-primario);
+  font-size: 2.5rem;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.page-subtitle {
+  color: var(--color-texto);
+  font-size: 1.1rem;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Estado de la caja */
+.estado-caja {
+  margin-bottom: 2rem;
+}
+
+.estado-indicator {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border: 2px solid;
+}
+
+.estado-indicator.abierta {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  border-color: #28a745;
+}
+
+.estado-indicator.cerrada {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  border-color: #dc3545;
+}
+
+.estado-icon {
+  font-size: 3rem;
+  margin-right: 1.5rem;
+}
+
+.estado-texto h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--color-primario);
+}
+
+.estado-texto p {
+  margin: 0;
+  color: var(--color-texto);
+  opacity: 0.8;
+}
+
+/* Resumen financiero */
+.resumen-financiero {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  color: var(--color-primario);
+  font-size: 1.5rem;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.resumen-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.resumen-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-texto);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.resumen-card .monto {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.resumen-card .monto.positivo {
+  color: #28a745;
+}
+
+.resumen-card .monto.negativo {
+  color: #dc3545;
+}
+
+/* Acciones de caja */
+.acciones-caja {
+  margin-bottom: 2rem;
+}
+
+.acciones-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* Movimientos */
+.movimientos-section {
+  margin-bottom: 2rem;
+}
+
+.movimientos-lista {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+}
+
+.movimiento-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.movimiento-item:last-child {
+  border-bottom: none;
+}
+
+.movimiento-info h4 {
+  margin: 0 0 0.25rem 0;
+  color: var(--color-primario);
+  font-size: 1rem;
+}
+
+.movimiento-info p {
+  margin: 0;
+  color: var(--color-texto);
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.movimiento-monto {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+}
+
+.movimiento-monto.ingreso {
+  color: #28a745;
+  background: #d4edda;
+}
+
+.movimiento-monto.egreso {
+  color: #dc3545;
+  background: #f8d7da;
+}
+
+.movimiento-monto.apertura {
+  color: #007bff;
+  background: #cce7ff;
+}
+
+.movimiento-monto.cierre {
+  color: #6c757d;
+  background: #e2e3e5;
+}
+
+/* Modal de cierre de caja */
+.modal-cierre-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-cierre-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-cierre-content {
+  padding: 2rem;
+}
+
+.modal-cierre-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-cierre-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.modal-cierre-title {
+  color: var(--color-primario);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.modal-cierre-resumen {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.resumen-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.resumen-item:last-child {
+  border-bottom: none;
+}
+
+.resumen-item-highlight {
+  background: rgba(217, 162, 97, 0.1);
+  margin: 0.5rem -1.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border-bottom: none;
+  border-top: 2px solid var(--color-secundario);
+  border-bottom: 2px solid var(--color-secundario);
+}
+
+.resumen-item-diferencia {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #e9ecef;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.resumen-item-diferencia.positivo {
+  color: #28a745;
+}
+
+.resumen-item-diferencia.negativo {
+  color: #dc3545;
+}
+
+.resumen-label {
+  color: var(--color-texto);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.resumen-value {
+  color: var(--color-primario);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.resumen-item-diferencia .resumen-value {
+  font-size: 1.3rem;
+}
+
+.modal-cierre-mensaje {
+  text-align: center;
+  color: var(--color-texto);
+  font-size: 1rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #fff3cd;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+}
+
+.modal-cierre-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.modal-cierre-btn {
+  flex: 1;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-cierre-btn-cancel {
+  background: #6c757d;
+  color: white;
+}
+
+.modal-cierre-btn-cancel:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-cierre-btn-confirm {
+  background: linear-gradient(135deg, var(--color-secundario) 0%, #c4914a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(217, 162, 97, 0.3);
+}
+
+.modal-cierre-btn-confirm:hover {
+  background: linear-gradient(135deg, #c4914a 0%, #b0823a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(217, 162, 97, 0.4);
+}
+
+.modal-cierre-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .control-caja-container {
+    margin-left: 0;
+    padding: 1rem;
+  }
+  
+  .resumen-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .acciones-grid {
+    flex-direction: column;
+  }
+  
+  .movimiento-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .modal-cierre-container {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .modal-cierre-content {
+    padding: 1.5rem;
+  }
+
+  .modal-cierre-title {
+    font-size: 1.5rem;
+  }
+
+  .modal-cierre-buttons {
+    flex-direction: column;
+  }
+
+  .modal-cierre-btn {
+    width: 100%;
+  }
+}
